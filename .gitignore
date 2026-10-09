@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.env*
+!.env.example
+
+# Local-only technical design documents
+/docs/technical-design.md
+/docs/technical-design*.md
