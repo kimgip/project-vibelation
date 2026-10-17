@@ -16,7 +16,11 @@ export function RequirementConfirmationPanel({
   const [error, setError] = useState("");
   const c = activeConfirmation(r),
     doc = appliedDocument(r);
-  const previewExists = r.mocks.some(m => m.requirementDocumentId === doc?.id && m.legacyVersion === r.legacyVersion);
+  const previewExists = r.mocks.some(
+    (m) =>
+      m.requirementDocumentId === doc?.id &&
+      m.legacyVersion === r.legacyVersion,
+  );
   function confirm() {
     try {
       confirmAndAnalyze();
@@ -44,7 +48,7 @@ export function RequirementConfirmationPanel({
           <b>분석에 사용할 요구사항 MD</b>
           <p>
             {doc
-              ? `MD 생성 ${doc.generationNumber} · 입력 v${doc.inputRevision}`
+              ? `요구사항 v${doc.generationNumber} · 입력 자료 v${doc.generationNumber}`
               : "협의 기준 MD를 선택해주세요."}
           </p>
         </div>
@@ -61,7 +65,9 @@ export function RequirementConfirmationPanel({
           >
             {hasConfirmedRequirement(r)
               ? "확정된 요구사항으로 분석하기"
-              : previewExists ? "요구사항 확정 후 분석하기" : "Mock 없이 요구사항 확정 후 분석하기"}
+              : previewExists
+                ? "요구사항 확정 후 분석하기"
+                : "Mock 없이 요구사항 확정 후 분석하기"}
           </button>
         </div>
         {c && (

@@ -2,7 +2,7 @@ import type { WorkRequest } from "../domain/types";
 export interface WorkspaceProps {
   r: WorkRequest;
   update: (change: (latest: WorkRequest) => WorkRequest) => void;
-  edit: (patch: Partial<WorkRequest>) => void;
+  edit: (patch: Partial<WorkRequest>) => boolean | void;
   check: (patch: Partial<WorkRequest>) => void;
   run: (kind: "analysis" | "report") => void;
   confirmAndAnalyze: () => void;

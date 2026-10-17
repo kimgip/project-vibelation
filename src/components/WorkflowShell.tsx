@@ -1,4 +1,9 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import {
+  MIN_DUE_DATE,
+  MAX_DUE_DATE,
+  validDueDate,
+} from "../domain/requestDetails";
 import { Link, useLocation } from "react-router-dom";
 import { Brand } from "../features/Landing";
 import {
@@ -35,8 +40,9 @@ export function AppHeader({ requests }: { requests: WorkRequest[] }) {
           <Link to="/">새 쇳물 시작</Link>
           <Link to="/requests">진행 중인 요청 · {requests.length}</Link>
           {requests.slice(0, 4).map((r) => (
-            <Link key={r.id} to={`/requests/${r.id}/input`}>
-              {r.title || "제목 없는 요청"}
+            <Link className="request-submenu-link" key={r.id} to={`/requests/${r.id}/input`}>
+              <span className="request-submenu-branch" aria-hidden="true">└</span>
+              <span>{r.title || "제목 없는 요청"}</span>
             </Link>
           ))}
           <Link to="/team">팀 진행 현황</Link>
@@ -146,12 +152,40 @@ export function ScreenTitle({
 export function RequestContext({
   r,
   edit,
+  initiallyOpen = false,
+  onContinue,
 }: {
   r: WorkRequest;
-  edit: (patch: Partial<WorkRequest>) => void;
+  edit: (patch: Partial<WorkRequest>) => void | boolean;
+  initiallyOpen?: boolean;
+  onContinue?: () => void;
 }) {
+  const [title, setTitle] = useState(r.title);
+  const [dueDate, setDueDate] = useState(r.dueDate);
+  const [error, setError] = useState("");
+  const [open, setOpen] = useState(initiallyOpen);
+  const [notice, setNotice] = useState("");
+  useEffect(() => {
+    setTitle(r.title);
+    setDueDate(r.dueDate);
+    setError("");
+  }, [r.id, r.title, r.dueDate]);
+  const dirty = title !== r.title || dueDate !== r.dueDate;
+  useEffect(() => {
+    if (!dirty) return;
+    const handler = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [dirty]);
   return (
-    <details className="request-context">
+    <details
+      className="request-context"
+      open={open}
+      onToggle={(e) => setOpen(e.currentTarget.open)}
+    >
       <summary>
         <span>{r.title || "새 개선 요청"}</span>
         <span className="context-version">
@@ -161,25 +195,84 @@ export function RequestContext({
         </span>
         <span>요청 정보 수정</span>
       </summary>
-      <div className="request-fields">
-        <label>
-          요청 제목
-          <input
-            value={r.title}
-            maxLength={160}
-            onChange={(e) => edit({ title: e.target.value })}
-            placeholder="요청 제목을 입력해주세요"
-          />
-        </label>
-        <label>
-          희망 완료일
-          <input
-            type="date"
-            value={r.dueDate}
-            onChange={(e) => edit({ dueDate: e.target.value })}
-          />
-        </label>
-      </div>
+      <form
+        id={`request-details-${r.id}`}
+        noValidate
+        onSubmit={(e) => {
+          e.preventDefault();
+          setNotice("");
+          const dateInput = e.currentTarget.elements.namedItem(
+            "dueDate",
+          ) as HTMLInputElement;
+          if (dateInput.validity.badInput || !validDueDate(dueDate)) {
+            setError("희망 완료일은 0001~9999년의 유효한 날짜로 입력해주세요.");
+            dateInput.focus();
+            return;
+          }
+          if (dirty && edit({ title: title.trim(), dueDate }) === false) return;
+          setError("");
+          setNotice("요청 정보를 저장했습니다.");
+          const submitter = (e.nativeEvent as SubmitEvent)
+            .submitter as HTMLButtonElement | null;
+          if (submitter?.name === "continue") onContinue?.();
+        }}
+      >
+        <div className="request-fields">
+          <label>
+            요청 제목
+            <input
+              value={title}
+              maxLength={160}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                setNotice("");
+              }}
+              placeholder="요청 제목을 입력해주세요"
+            />
+          </label>
+          <label>
+            희망 완료일
+            <input
+              type="date"
+              name="dueDate"
+              min={MIN_DUE_DATE}
+              max={MAX_DUE_DATE}
+              value={dueDate}
+              onChange={(e) => {
+                setNotice("");
+                if (/^\d{5,}-/.test(e.target.value)) {
+                  setError("연도는 4자리까지만 입력할 수 있습니다.");
+                  return;
+                }
+                setDueDate(e.target.value);
+                setError("");
+              }}
+            />
+          </label>
+        </div>
+        <div className="request-details-actions">
+          <small>
+            {dirty ? "입력 중 · 아직 저장되지 않았습니다." : notice}
+          </small>
+          <button
+            type="button"
+            onClick={() => {
+              setTitle(r.title);
+              setDueDate(r.dueDate);
+              setError("");
+              setNotice("");
+            }}
+          >
+            취소
+          </button>
+          <button type="submit">요청 정보 저장</button>
+        </div>
+        {error && (
+          <p className="inline-error" role="alert">
+            {error}
+          </p>
+        )}
+      </form>
     </details>
   );
 }

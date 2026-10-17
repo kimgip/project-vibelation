@@ -126,7 +126,7 @@ export function useWorkspace() {
     active.current?.controller.abort();
     active.current = null;
     setBusy("");
-    commit(editRequest(r, patch));
+    return commit(editRequest(r, patch));
   };
   const create = (materials: Material[] = []) => {
     if (storageBlocked) {

@@ -1,3 +1,4 @@
+import { validDueDate } from "./requestDetails";
 export type ResourceType = "UI" | "Logic" | "API" | "DB" | "Permission";
 export interface Basis {
   requestId: string;
@@ -185,6 +186,7 @@ export function editRequest(
   r: WorkRequest,
   patch: Partial<WorkRequest>,
 ): WorkRequest {
+  if (patch.dueDate !== undefined && !validDueDate(patch.dueDate)) throw new Error("희망 완료일은 4자리 연도의 유효한 날짜로 입력해주세요.");
   const inputChanged = ["title", "text", "html", "attachments", "dueDate"].some(
     (k) => k in patch,
   );

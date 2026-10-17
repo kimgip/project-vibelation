@@ -18,6 +18,7 @@ import {
 import { downloadMarkdown, displayDate } from "../utils/downloads";
 import { useRequirements } from "./useRequirements";
 import { MaterialCards } from "./MaterialCards";
+import { DocumentSources } from "./DocumentSources";
 import { LegacyPicker } from "./LegacyPicker";
 import { SystemMockPanel } from "./SystemMockPanel";
 import { RequirementConfirmationPanel } from "./RequirementConfirmationPanel";
@@ -191,10 +192,8 @@ export function InputPage(props: WorkspaceProps) {
               onClick={() => setViewId(d.id)}
             >
               <span>
-                요구사항 MD · 생성 {d.generationNumber}
-                <small>
-                  {displayDate(d.createdAt)} · 입력 v{d.inputRevision}
-                </small>
+                요구사항 v{d.generationNumber} · 입력 자료 v{d.generationNumber}
+                <small>{displayDate(d.createdAt)}</small>
               </span>
               <Tag>{active?.id === d.id ? "협의 기준" : "열람"}</Tag>
             </button>
@@ -229,7 +228,7 @@ export function InputPage(props: WorkspaceProps) {
                   downloadMarkdown(
                     doc.inputSnapshot.title,
                     `요구사항-생성${doc.generationNumber}`,
-                    doc.inputRevision,
+                    doc.generationNumber,
                     doc.markdown,
                   )
                 }
@@ -242,24 +241,7 @@ export function InputPage(props: WorkspaceProps) {
             </div>
           </section>
           <div className="document-aside">
-            <section className="workflow-card">
-              <h3>반영된 자료</h3>
-              {doc.inputSnapshot.text && (
-                <p>
-                  Teams 대화 · {doc.inputSnapshot.text.length.toLocaleString()}
-                  자
-                </p>
-              )}
-              {doc.inputSnapshot.html && (
-                <p>
-                  HTML 시안 · {doc.inputSnapshot.html.length.toLocaleString()}자
-                </p>
-              )}
-              {doc.inputSnapshot.attachmentNames.map((name, i) => (
-                <p key={`${i}-${name}`}>{name}</p>
-              ))}
-              <small>이 문서 생성 당시의 자료입니다.</small>
-            </section>
+            <DocumentSources key={doc.id} doc={doc} />
             <section className="workflow-card">
               <h3>분석 기준 MD</h3>
               <Tag green={active?.id === doc.id}>

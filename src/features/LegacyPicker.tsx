@@ -82,18 +82,12 @@ export function LegacyPicker({ r, edit, go, saved }: WorkspaceProps) {
           ))}
       </div>
       <h2 className="legacy-request-label">② 요청 정보</h2>
-      <RequestContext r={r} edit={edit} />
-      {!r.title.trim() && (
-        <label className="legacy-title-field">
-          화면·요청 제목
-          <input
-            value={r.title}
-            maxLength={160}
-            placeholder="예: 다운로드 센터에 미리보기 추가하기"
-            onChange={(e) => edit({ title: e.target.value })}
-          />
-        </label>
-      )}
+      <RequestContext
+        r={r}
+        edit={edit}
+        initiallyOpen
+        onContinue={() => go("input?view=materials")}
+      />
       <div className="workflow-actions">
         <Link className="button" to="/">
           이전
@@ -101,7 +95,9 @@ export function LegacyPicker({ r, edit, go, saved }: WorkspaceProps) {
         <button
           className="primary"
           disabled={!saved}
-          onClick={() => go("input?view=materials")}
+          type="submit"
+          form={`request-details-${r.id}`}
+          name="continue"
         >
           다음 &gt;
         </button>

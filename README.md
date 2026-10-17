@@ -102,3 +102,5 @@ HTML은 DOMPurify와 CSSOM으로 정리한 뒤 빈 sandbox iframe과 CSP로 격�
 - `src/services/generationTransport.ts`: 공통 MD+ZIP 전송
 
 `npm test`는 도메인·HTTP 계약 회귀 검증입니다. 브라우저 검증은 `node tests/browser-workflow.mjs`, 서버 응답 대역 검증은 `node tests/browser-generation.mjs`로 실행합니다. Playwright와 Chrome이 필요하며, 번들 런타임 사용 시 `PLAYWRIGHT_MODULE`에 Playwright 패키지 경로를 지정합니다. 두 스크립트는 임시 로컬 Vite 서버와 격리된 브라우저를 사용합니다. 서버 응답은 테스트에서 대체하며 실제 BE 통합 성공을 뜻하지 않습니다. 스크린샷은 Git 제외된 `test-results/`에 저장합니다.
+
+요구사항 문서 이력의 vN을 선택하면 같은 번호의 입력 자료에서 생성 당시 텍스트·HTML 코드/정적 미리보기·첨부 목록을 조회합니다. 열람은 현재 입력과 협의 기준을 바꾸지 않습니다. 버전별 원문 보존 검증은 `node tests/browser-documentVersions.mjs`로 실행합니다.

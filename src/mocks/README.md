@@ -14,7 +14,7 @@
 
 ## 문서 자리표시자
 
-- 요구사항 MD: `{{generationNumber}}`, `{{title}}`, `{{inputRevision}}`, `{{text}}`, `{{html}}`, `{{attachments}}`
+- 요구사항 MD: `{{generationNumber}}`, `{{title}}`, `{{text}}`, `{{html}}`, `{{attachments}}`
 - 리포트: `{{title}}`, `{{revision}}`, `{{legacyVersion}}`, `{{documentId}}`, `{{requirements}}`, `{{impacts}}`
 - 영향 자원별 표현: `{{type}}`, `{{name}}`, `{{proposed}}`, `{{reason}}`, `{{path}}`, `{{days}}`
 

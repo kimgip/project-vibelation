@@ -955,3 +955,68 @@
 .workflow-app .workflow-page-footer span {
   font-size: 12px;
 }
+.request-details-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  padding: 0 24px 20px;
+}
+.request-details-actions small {
+  margin-right: auto;
+}
+.request-context form > .inline-error {
+  margin: 0 24px 20px;
+}
+.source-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 16px 0;
+}
+.source-tabs button {
+  padding: 8px 10px;
+}
+.source-tabs button[aria-pressed="true"] {
+  background: #ac7f5e;
+  color: #15120f;
+}
+.document-sources label {
+  display: block;
+  color: #c9bfb2;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+.document-sources textarea {
+  min-height: 240px;
+  margin-bottom: 12px;
+}
+.document-sources iframe {
+  width: 100%;
+  min-height: 280px;
+  border: 1px solid #3a3029;
+  background: white;
+}
+.document-sources .workflow-info {
+  margin: 10px 0;
+}
+.document-sources > small {
+  display: block;
+  margin-top: 12px;
+}
+.snapshot-file-list {
+  padding-left: 20px;
+  overflow-wrap: anywhere;
+  line-height: 1.8;
+}
+
+.brand-navigation nav a.request-submenu-link {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding-left: 30px;
+}
+.request-submenu-branch {
+  flex-shrink: 0;
+  color: var(--muted);
+}
