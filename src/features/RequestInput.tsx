@@ -1,3 +1,5 @@
+import { SystemMockPanel } from "./SystemMockPanel";
+import { RequirementConfirmationPanel } from "./RequirementConfirmationPanel";
 import { useState, useRef, useEffect } from "react";
 import {
   Code2,
@@ -22,7 +24,8 @@ import { Tag, Empty } from "../components/shared";
 import { downloadMarkdown, displayDate } from "../utils/downloads";
 import { useRequirements } from "./useRequirements";
 import type { WorkspaceProps } from "./workspace";
-export function InputPage({ r, edit, update, go, saved }: WorkspaceProps) {
+export function InputPage(props: WorkspaceProps) {
+  const { r, edit, update, go, saved } = props;
   const [tab, setTab] = useState("text"),
     [htmlMode, setHtmlMode] = useState("code"),
     [viewId, setViewId] = useState<string>();
@@ -54,7 +57,10 @@ export function InputPage({ r, edit, update, go, saved }: WorkspaceProps) {
         accepted = true;
         return next;
       });
-      if (accepted) go("analysis");
+      if (accepted)
+        document
+          .getElementById("system-mock")
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
     } catch (e) {
       setApplyError(
         e instanceof Error ? e.message : "문서 적용에 실패했습니다.",
@@ -403,7 +409,7 @@ export function InputPage({ r, edit, update, go, saved }: WorkspaceProps) {
                       }
                       onClick={() => void applyDocument()}
                     >
-                      <Check size={14} />이 요구사항으로 다음 단계
+                      <Check size={14} />이 문서로 협의하기
                     </button>
                   </div>
                   {applyError && (
@@ -418,7 +424,7 @@ export function InputPage({ r, edit, update, go, saved }: WorkspaceProps) {
                     </p>
                   )}
                   <small>
-                    목록에서 문서를 보는 것만으로 후속 적용 기준은 바뀌지
+                    목록에서 문서를 보는 것만으로 협의·확정 기준은 바뀌지
                     않습니다.
                   </small>
                 </div>
@@ -433,6 +439,8 @@ export function InputPage({ r, edit, update, go, saved }: WorkspaceProps) {
           )}
         </section>
       </div>
+      <SystemMockPanel r={r} update={update} saved={saved} />
+      <RequirementConfirmationPanel {...props} />
     </>
   );
 }

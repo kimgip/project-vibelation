@@ -3566,3 +3566,79 @@ footer span {
     flex-wrap: wrap;
   }
 }
+/* Three-stage workflow and optional consultation */
+.stepper .step {
+  flex-basis: 33.333%;
+}
+.system-mock-panel,
+.requirement-confirmation {
+  margin-top: 22px;
+}
+.mock-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+  margin: 15px 0;
+}
+.mock-toolbar button {
+  font-size: 11px;
+}
+.system-mock-panel .mock-grid {
+  align-items: start;
+}
+.system-mock-panel ul {
+  padding-left: 18px;
+  font-size: 12px;
+  line-height: 2;
+}
+.agreement-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+.agreement-fields label {
+  font-size: 11px;
+}
+.agreement-fields textarea {
+  display: block;
+  min-height: 125px;
+  margin-top: 9px;
+}
+.confirmation-summary {
+  padding: 18px;
+  border: 1px solid #d4e2f7;
+  border-radius: 8px;
+  background: #f4f8ff;
+  margin: 22px 0;
+  font-size: 12px;
+}
+.confirmation-summary p {
+  margin: 8px 0;
+}
+.confirmation-history-row {
+  padding: 15px 0;
+  border-bottom: 1px solid #e2e8f1;
+  font-size: 11px;
+}
+.confirmation-history-row pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 850px) {
+  .agreement-fields {
+    grid-template-columns: 1fr;
+  }
+  .system-mock-panel .mock-grid {
+    grid-template-columns: 1fr;
+  }
+  .system-mock-panel .product-preview {
+    margin: 0;
+  }
+  .step b {
+    font-size: 10px;
+  }
+  .mock-toolbar button {
+    max-width: 100%;
+  }
+}

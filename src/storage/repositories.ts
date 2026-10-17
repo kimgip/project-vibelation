@@ -4,8 +4,8 @@ import {
   type Registration,
   type WorkRequest,
 } from "../domain/types";
-export const REQUEST_KEY = "vibelation.requests.v3",
-  HISTORY_KEY = "vibelation.history.v3";
+export const REQUEST_KEY = "vibelation.requests.v4",
+  HISTORY_KEY = "vibelation.history.v4";
 const object = (v: unknown): v is Record<string, unknown> =>
   !!v && typeof v === "object" && !Array.isArray(v);
 function validRequest(v: unknown): v is WorkRequest {
@@ -90,6 +90,86 @@ function validRequest(v: unknown): v is WorkRequest {
     typeof v.selectedRequirementDocumentId !== "string"
   )
     return false;
+  const mockValid = (m: unknown) =>
+    object(m) &&
+    ["id", "requirementDocumentId", "legacyVersion", "createdAt"].every(
+      (k) => typeof m[k] === "string",
+    ) &&
+    Number.isInteger(m.generationNumber) &&
+    m.source === "mock" &&
+    m.renderer === "download-center-demo" &&
+    ["behaviors", "assumptions", "unconnectedFeatures"].every(
+      (k) =>
+        Array.isArray(m[k]) &&
+        (m[k] as unknown[]).every((x) => typeof x === "string"),
+    );
+  if (
+    v.mocks !== undefined &&
+    (!Array.isArray(v.mocks) || !v.mocks.every(mockValid))
+  )
+    return false;
+  if (
+    v.mockJobs !== undefined &&
+    (!Array.isArray(v.mockJobs) ||
+      !v.mockJobs.every(
+        (j) =>
+          object(j) &&
+          [
+            "id",
+            "idempotencyKey",
+            "requirementDocumentId",
+            "legacyVersion",
+            "createdAt",
+          ].every((k) => typeof j[k] === "string") &&
+          Number.isInteger(j.generationNumber) &&
+          ["queued", "running", "succeeded", "failed"].includes(
+            String(j.status),
+          ) &&
+          (j.artifact === undefined || mockValid(j.artifact)),
+      ))
+  )
+    return false;
+  if (
+    v.reviewedMockIds !== undefined &&
+    (!Array.isArray(v.reviewedMockIds) ||
+      !v.reviewedMockIds.every((id) => typeof id === "string"))
+  )
+    return false;
+  for (const key of [
+    "acceptanceCriteria",
+    "exclusions",
+    "selectedMockId",
+    "activeConfirmationId",
+  ])
+    if (v[key] !== undefined && typeof v[key] !== "string") return false;
+  if (
+    v.confirmations !== undefined &&
+    (!Array.isArray(v.confirmations) ||
+      !v.confirmations.every(
+        (c) =>
+          object(c) &&
+          ["id", "requestId", "confirmedAt", "draftFingerprint"].every(
+            (k) => typeof c[k] === "string",
+          ) &&
+          Number.isInteger(c.version) &&
+          Number.isInteger(c.inputRevision) &&
+          documentValid(c.documentSnapshot) &&
+          (c.mockSnapshot === null || mockValid(c.mockSnapshot)) &&
+          (c.mockReviewed === null || typeof c.mockReviewed === "boolean") &&
+          object(c.agreementSnapshot) &&
+          [
+            "scope",
+            "acceptanceCriteria",
+            "exclusions",
+            "unresolvedItems",
+          ].every(
+            (k) =>
+              typeof (c.agreementSnapshot as Record<string, unknown>)[k] ===
+              "string",
+          ),
+      ))
+  )
+    return false;
   for (const key of ["requirement", "analysis", "systemMock", "report"]) {
     const a = v[key];
     if (a === undefined) continue;
@@ -147,7 +227,7 @@ function read<T>(
   }
   if (
     !object(data) ||
-    ![2, 3].includes(Number(data.schemaVersion)) ||
+    ![2, 3, 4].includes(Number(data.schemaVersion)) ||
     !Array.isArray(data.items) ||
     !data.items.every(validate)
   )
@@ -193,6 +273,12 @@ function normalize(r: WorkRequest): WorkRequest {
     ...r,
     inputRevision: r.inputRevision || r.revision,
     requirements: r.requirements || [],
+    mocks: r.mocks || [],
+    mockJobs: r.mockJobs || [],
+    reviewedMockIds: r.reviewedMockIds || [],
+    confirmations: r.confirmations || [],
+    acceptanceCriteria: r.acceptanceCriteria || "",
+    exclusions: r.exclusions || "",
     generations: r.generations || [],
     attachments: r.attachments.map((a) => ({
       ...a,
@@ -233,6 +319,7 @@ export const repository = {
   requests(): WorkRequest[] {
     const current =
       read(REQUEST_KEY, validRequest) ??
+      read("vibelation.requests.v3", validRequest) ??
       read("vibelation.requests.v2", validRequest);
     if (current) return current.map(normalize);
     const old = localStorage.getItem("vibelation.request.v1");
@@ -250,12 +337,13 @@ export const repository = {
     const next = [r, ...items.filter((x) => x.id !== r.id)];
     localStorage.setItem(
       REQUEST_KEY,
-      JSON.stringify({ schemaVersion: 3, items: next }),
+      JSON.stringify({ schemaVersion: 4, items: next }),
     );
   },
   history(): Registration[] {
     const current =
       read(HISTORY_KEY, validRegistration) ??
+      read("vibelation.history.v3", validRegistration) ??
       read("vibelation.history.v2", validRegistration);
     if (current)
       return current.map((entry) => ({
@@ -305,7 +393,7 @@ export const repository = {
     if (!canRegister(r))
       throw new Error("최신 버전 산출물과 두 가지 검토 확인이 필요합니다.");
     const items = this.history();
-    const key = `${r.id}:${r.revision}:${r.legacyVersion}:${r.selectedRequirementDocumentId}`;
+    const key = `${r.id}:${r.activeConfirmationId}:${r.legacyVersion}:${r.analysis!.id}:${r.report!.id}`;
     const existing = items.find((x) => x.key === key);
     if (existing) return existing;
     const result = {
@@ -316,7 +404,7 @@ export const repository = {
     };
     localStorage.setItem(
       HISTORY_KEY,
-      JSON.stringify({ schemaVersion: 3, items: [result, ...items] }),
+      JSON.stringify({ schemaVersion: 4, items: [result, ...items] }),
     );
     return result;
   },

@@ -19,7 +19,8 @@ import {
   basisOf,
   sameBasis,
   isCurrent,
-  hasAppliedRequirement,
+  hasConfirmedRequirement,
+  activeConfirmation,
   appliedDocument,
   statusOf,
   type WorkRequest,
@@ -30,7 +31,6 @@ import { mockService } from "./services/contract";
 import {
   InputPage,
   AnalysisPage,
-  AgreementPage,
   ReviewPage,
   type WorkspaceProps,
 } from "./features/workspace";
@@ -38,9 +38,8 @@ import { HistoryPage, TeamPage } from "./features/history";
 import { Empty, Tag } from "./components/shared";
 import "./style.css";
 const steps = [
-  ["input", "자료 입력", "요구사항을 한곳에"],
+  ["input", "자료 입력·확정", "자료와 화면으로 함께 협의"],
   ["analysis", "레거시 분석", "변경 범위와 근거 탐색"],
-  ["agreement", "협의사항 도출", "화면으로 함께 협의"],
   ["review", "최종 검토", "결론을 다음 경험으로"],
 ];
 function load() {
@@ -73,7 +72,9 @@ function App() {
     isTeam = parts[1] === "team";
   const id = parts[2];
   const r = requests.find((x) => x.id === id);
-  const step = parts[3] === "mock" ? "input" : parts[3] || "input";
+  const step = ["mock", "agreement"].includes(parts[3])
+    ? "input"
+    : parts[3] || "input";
   const index = steps.findIndex((s) => s[0] === step);
   const requestsRef = useRef(requests),
     storageBlockedRef = useRef(storageBlocked),
@@ -164,8 +165,25 @@ function App() {
       create();
     }
   }, [location.pathname]);
+  useEffect(() => {
+    if (r && ["agreement", "mock"].includes(parts[3]))
+      navigate(`/requests/${r.id}/input`, {
+        replace: true,
+        state: { focusMock: parts[3] === "agreement" },
+      });
+  }, [location.pathname]);
+  useEffect(() => {
+    if (step === "input" && location.state?.focusMock) {
+      const frame = requestAnimationFrame(() =>
+        document
+          .getElementById("system-mock")
+          ?.scrollIntoView({ block: "start" }),
+      );
+      return () => cancelAnimationFrame(frame);
+    }
+  }, [location.pathname, location.state]);
   const go = (target: string) => r && navigate(`/requests/${r.id}/${target}`);
-  async function run(kind: "analysis" | "systemMock" | "report") {
+  async function run(kind: "analysis" | "report") {
     if (!r || active.current) return;
     const snapshot = structuredClone(r),
       controller = new AbortController(),
@@ -188,7 +206,7 @@ function App() {
       commit({
         ...current,
         [kind]: result,
-        ...(kind === "report"
+        ...(kind === "report" || kind === "analysis"
           ? { scopeReviewed: false, estimateReviewed: false }
           : {}),
       });
@@ -423,6 +441,14 @@ function App() {
                     입력 v{r.inputRevision} · 검토 v{r.revision}
                   </span>
                   <span>{r.legacyVersion}</span>
+                  {activeConfirmation(r) && (
+                    <span>
+                      확정 v{activeConfirmation(r)!.version}
+                      {hasConfirmedRequirement(r)
+                        ? ""
+                        : " · 변경 후 재확정 필요"}
+                    </span>
+                  )}
                   {appliedDocument(r) && (
                     <span>
                       적용 MD 생성 {appliedDocument(r)!.generationNumber} · 입력
@@ -468,25 +494,20 @@ function App() {
                       <b>{label}</b>
                       <small>{desc}</small>
                     </span>
-                    {i < 3 && <ChevronRight size={14} />}
+                    {i < 2 && <ChevronRight size={14} />}
                   </Link>
                 ))}
               </nav>
-              {[r.requirement, r.analysis, r.systemMock, r.report].some(
-                (a) => a && !isCurrent(r, a),
-              ) && (
+              {[r.analysis, r.report].some((a) => a && !isCurrent(r, a)) && (
                 <div className="stale-warning">
-                  입력 또는 적용 문서가 변경되었습니다. 요구사항 MD 생성·적용 →
-                  레거시 분석 → 시스템 Mock → 리포트를 현재 버전으로
-                  갱신해주세요.
+                  입력 또는 적용 문서가 변경되었습니다. 요구사항 확정 → 레거시
+                  분석 → 리포트를 현재 확정 기준으로 갱신해주세요.
                 </div>
               )}
               {step === "input" ? (
                 <InputPage {...props} />
               ) : step === "analysis" ? (
                 <AnalysisPage {...props} />
-              ) : step === "agreement" ? (
-                <AgreementPage {...props} />
               ) : step === "review" ? (
                 <ReviewPage {...props} />
               ) : (
@@ -501,10 +522,10 @@ function App() {
                       이전 단계
                     </button>
                   )}
-                  {index >= 0 && index < 3 && (
+                  {index >= 0 && index < 2 && (
                     <button
                       className="primary"
-                      disabled={index === 0 && !hasAppliedRequirement(r)}
+                      disabled={index === 0 && !hasConfirmedRequirement(r)}
                       onClick={() => go(steps[index + 1][0])}
                     >
                       다음 단계

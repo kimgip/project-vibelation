@@ -7,7 +7,7 @@ import {
   Download,
   ArrowLeft,
 } from "lucide-react";
-import type { Registration } from "../domain/types";
+import { activeConfirmation, type Registration } from "../domain/types";
 import { displayDate, downloadMarkdown } from "../utils/downloads";
 import { Empty, Tag } from "../components/shared";
 export function HistoryPage({
@@ -37,6 +37,47 @@ export function HistoryPage({
               {displayDate(detail.registeredAt)} · 요구사항 v
               {detail.request.revision} · {detail.request.legacyVersion}
             </p>
+          </div>
+          <div className="panel-content confirmation-summary">
+            {activeConfirmation(detail.request) ? (
+              <>
+                <b>
+                  요구사항 확정 v{activeConfirmation(detail.request)!.version}
+                </b>
+                <p>
+                  MD 생성{" "}
+                  {
+                    activeConfirmation(detail.request)!.documentSnapshot
+                      .generationNumber
+                  }{" "}
+                  ·{" "}
+                  {activeConfirmation(detail.request)!.mockSnapshot
+                    ? `Mock 포함 / ${activeConfirmation(detail.request)!.mockReviewed ? "확인 완료" : "미확인"}`
+                    : "Mock 없음"}
+                </p>
+                <details>
+                  <summary>당시 확정 문서와 협의 내용</summary>
+                  <pre>
+                    {
+                      activeConfirmation(detail.request)!.documentSnapshot
+                        .markdown
+                    }
+                  </pre>
+                  <pre>
+                    {JSON.stringify(
+                      activeConfirmation(detail.request)!.agreementSnapshot,
+                      null,
+                      2,
+                    )}
+                  </pre>
+                </details>
+              </>
+            ) : (
+              <p>
+                이전 4단계 흐름의 등록 이력입니다. 새 흐름의 요구사항 확정을
+                소급 생성하지 않았습니다.
+              </p>
+            )}
           </div>
           <div className="report-body">
             <pre>

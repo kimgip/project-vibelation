@@ -44,7 +44,13 @@ export function DocumentPanel({
     </section>
   );
 }
-export function ProductPreview({ applied = false }: { applied?: boolean }) {
+export function ProductPreview({
+  applied = false,
+  resultScenario = "success",
+}: {
+  applied?: boolean;
+  resultScenario?: "success" | "partial" | "failure";
+}) {
   const [selected, setSelected] = useState<string[]>([]),
     [language, setLanguage] = useState("KOR"),
     [query, setQuery] = useState(""),
@@ -107,7 +113,11 @@ export function ProductPreview({ applied = false }: { applied?: boolean }) {
               disabled={!selected.length}
               onClick={() =>
                 setMessage(
-                  `${selected.length}개 · ${language} ZIP 다운로드 시연입니다. 실제 API는 연결하지 않았습니다.`,
+                  resultScenario === "failure"
+                    ? "다운로드 실패 시연: 잠시 후 다시 시도해주세요. 실제 API 호출은 없습니다."
+                    : resultScenario === "partial"
+                      ? "일부 파일 누락 시연: 선택한 자료 중 파일이 없는 항목을 안내합니다."
+                      : `${selected.length}개 · ${language} ZIP 다운로드 성공 시연입니다. 실제 API는 연결하지 않았습니다.`,
                 )
               }
             >

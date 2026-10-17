@@ -9,21 +9,21 @@ import {
 } from "lucide-react";
 import {
   isCurrent,
-  hasAppliedRequirement,
+  hasConfirmedRequirement,
+  activeConfirmation,
   readyForReview,
   canRegister,
   type WorkRequest,
 } from "../domain/types";
 import { cases } from "../mocks/download-center";
-import { agreementMarkdown } from "../services/contract";
 import { downloadMarkdown } from "../utils/downloads";
-import { ProductPreview, Empty, Tag } from "../components/shared";
+import { Empty, Tag } from "../components/shared";
 export interface WorkspaceProps {
   r: WorkRequest;
   update: (change: (latest: WorkRequest) => WorkRequest) => void;
   edit: (patch: Partial<WorkRequest>) => void;
   check: (patch: Partial<WorkRequest>) => void;
-  run: (kind: "analysis" | "systemMock" | "report") => void;
+  run: (kind: "analysis" | "report") => void;
   busy: string;
   go: (step: string) => void;
   register: () => void;
@@ -68,7 +68,7 @@ export function AnalysisPage({ r, edit, run, busy }: WorkspaceProps) {
         </span>
         <button
           className="primary"
-          disabled={!!busy || !hasAppliedRequirement(r)}
+          disabled={!!busy || !hasConfirmedRequirement(r)}
           onClick={() => run("analysis")}
         >
           <Sparkles size={14} />
@@ -136,15 +136,12 @@ export function AnalysisPage({ r, edit, run, busy }: WorkspaceProps) {
                 최대 용량, 일부 파일 누락, 파일 접근 권한의 서버 검증 정책이
                 필요합니다.
               </p>
-              <label htmlFor="opinion">검토 의견</label>
-              <textarea
-                id="opinion"
-                value={r.opinion}
-                maxLength={4000}
-                placeholder="추가 확인할 내용을 기록해주세요."
-                onChange={(e) => edit({ opinion: e.target.value })}
-              />
-              <small>의견을 수정하면 현재 버전으로 다시 분석해야 합니다.</small>
+              <h3>확정한 미확정 사항</h3>
+              <p className="preserve">
+                {activeConfirmation(r)?.agreementSnapshot.unresolvedItems ||
+                  "없음"}
+              </p>
+              <small>변경이 필요하면 Step 01에서 수정 후 재확정해주세요.</small>
             </div>
           </section>
           <section className="panel impact-map">
@@ -172,110 +169,9 @@ export function AnalysisPage({ r, edit, run, busy }: WorkspaceProps) {
         </div>
       ) : (
         <Empty>
-          현재 입력 기준의 요구사항 MD를 생성·적용한 뒤 레거시 분석을
-          실행해주세요.
+          Step 01에서 요구사항을 확정한 뒤 레거시 분석을 실행해주세요.
         </Empty>
       )}
-    </>
-  );
-}
-export function AgreementPage({ r, edit, run, busy }: WorkspaceProps) {
-  const [tab, setTab] = useState("system");
-  return (
-    <>
-      <SectionTitle
-        number="03"
-        title="같은 화면을 보며 맞추는 구현 방향"
-        description="원하는 모습과 시스템 제약을 함께 반영합니다."
-      />
-      <div className="mock-grid">
-        <section className="panel">
-          <div className="panel-heading">
-            <span>화면으로 협의</span>
-            <button
-              className="primary"
-              disabled={!!busy || !isCurrent(r, r.analysis)}
-              onClick={() => run("systemMock")}
-            >
-              <Sparkles size={14} />
-              {busy === "systemMock" ? "생성 중…" : "시스템 Mock 생성"}
-            </button>
-          </div>
-          <div className="preview-toolbar">
-            <button
-              aria-pressed={tab === "original"}
-              className={tab === "original" ? "selected" : ""}
-              onClick={() => setTab("original")}
-            >
-              원하는 화면
-            </button>
-            <button
-              aria-pressed={tab === "system"}
-              className={tab === "system" ? "selected" : ""}
-              onClick={() => setTab("system")}
-            >
-              시스템 적용 제안
-            </button>
-            <span className="tag">
-              {isCurrent(r, r.systemMock)
-                ? `현재 버전 v${r.revision}`
-                : "생성 전 · 시연 예시"}
-            </span>
-          </div>
-          <ProductPreview key={tab} applied={tab === "system"} />
-          <p className="panel-note">
-            공통 색상·버튼 스타일을 반영한 샘플입니다. 실제 시스템 적용
-            전입니다.
-          </p>
-        </section>
-        <section className="panel">
-          <div className="panel-heading">
-            <span>화면 협의 노트</span>
-            <Tag>협의 v{r.revision}</Tag>
-          </div>
-          <div className="panel-content">
-            <div className="note">
-              <span className="avatar">김</span>
-              <div>
-                <b>
-                  운영 담당자 <small>시연 메모</small>
-                </b>
-                <p>
-                  선택 다운로드는 목록 상단에 배치하면 선택 상태를 확인하기
-                  좋겠습니다.
-                </p>
-              </div>
-            </div>
-            <label htmlFor="agreement">이번 버전 협의사항 · 수용 기준</label>
-            <textarea
-              id="agreement"
-              className="agreement-input"
-              maxLength={8000}
-              value={r.agreement}
-              onChange={(e) => edit({ agreement: e.target.value })}
-              placeholder="합의 범위·제외 범위·수용 기준·남은 위험을 적어주세요."
-            />
-            <div className="callout">
-              요구사항이나 의견을 수정하면 이전 분석과 Mock은 재검토 대상으로
-              표시됩니다.
-            </div>
-            <button
-              disabled={!r.agreement.trim()}
-              onClick={() =>
-                downloadMarkdown(
-                  r.title,
-                  "협의사항",
-                  r.revision,
-                  agreementMarkdown(r),
-                )
-              }
-            >
-              <Download size={14} />
-              협의 MD 다운로드
-            </button>
-          </div>
-        </section>
-      </div>
     </>
   );
 }
@@ -292,7 +188,7 @@ export function ReviewPage({
   return (
     <>
       <SectionTitle
-        number="04"
+        number="03"
         title="함께 정한 결론을 다음 경험으로"
         description="최종 검토 후 이력에 등록합니다."
       />
@@ -312,7 +208,8 @@ export function ReviewPage({
           <Tag>검토 리포트 · {reportCurrent ? "현재 버전" : "갱신 필요"}</Tag>
           <h2>{r.title || "새 개선 요청"}</h2>
           <p>
-            요구사항 v{r.revision} · {r.legacyVersion} · 실제 AI 분석 미연결
+            확정 v{activeConfirmation(r)?.version || "미확정"} ·{" "}
+            {r.legacyVersion} · 실제 AI 분석 미연결
           </p>
         </div>
         <div className="report-tabs" role="tablist" aria-label="리포트 내용">
@@ -359,9 +256,10 @@ export function ReviewPage({
               </div>
               <div className="report-columns">
                 <div>
-                  <h3>확정할 협의 내용</h3>
+                  <h3>확정한 협의 내용</h3>
                   <p className="preserve">
-                    {r.agreement || "협의사항을 먼저 입력해주세요."}
+                    {activeConfirmation(r)?.agreementSnapshot.scope ||
+                      "별도 합의 범위 없음"}
                   </p>
                 </div>
                 <div>
