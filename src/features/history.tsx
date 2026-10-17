@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { createMockHistoryService } from "../services/history";
+import { MarkdownPreview } from "../components/MarkdownPreview";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Search,
@@ -10,7 +12,26 @@ import {
 import { activeConfirmation, type Registration } from "../domain/types";
 import { displayDate, downloadMarkdown } from "../utils/downloads";
 import { Empty, Tag } from "../components/shared";
-export function HistoryPage({
+export function HistoryPage({ items, id }: { items: Registration[]; id?: string }) {
+  const [result, setResult] = useState<{items: Registration[]; id?: string; source: Registration[]} | null>(null);
+  const [error, setError] = useState("");
+  const [retry, setRetry] = useState(0);
+  useEffect(() => {
+    const controller = new AbortController();
+    const service = createMockHistoryService(items);
+    setError("");
+    setResult(null);
+    const operation = id ? service.get(id, controller.signal).then(item => item ? [item] : []) : service.list(controller.signal).then(page => page.items);
+    operation.then(rows => { if (!controller.signal.aborted) setResult({items: rows, id, source: items}); }).catch(e => {
+      if (!controller.signal.aborted) setError(e instanceof Error ? e.message : "이력을 불러오지 못했습니다.");
+    });
+    return () => controller.abort();
+  }, [items, id, retry]);
+  if (error) return <div role="alert">{error}<button onClick={() => setRetry(n => n + 1)}>다시 불러오기</button></div>;
+  if (!result || result.id !== id || result.source !== items) return <p role="status">검토 이력을 불러오는 중입니다…</p>;
+  return <HistoryContent key={id || "list"} items={result.items} id={id} />;
+}
+function HistoryContent({
   items,
   id,
 }: {
@@ -57,19 +78,10 @@ export function HistoryPage({
                 </p>
                 <details>
                   <summary>당시 확정 문서와 협의 내용</summary>
-                  <pre>
-                    {
-                      activeConfirmation(detail.request)!.documentSnapshot
-                        .markdown
-                    }
-                  </pre>
-                  <pre>
-                    {JSON.stringify(
-                      activeConfirmation(detail.request)!.agreementSnapshot,
-                      null,
-                      2,
-                    )}
-                  </pre>
+                  <MarkdownPreview markdown={activeConfirmation(detail.request)!.documentSnapshot.markdown} />
+                  {Object.entries(activeConfirmation(detail.request)!.agreementSnapshot).filter(([, value]) => value.trim()).map(([key, value]) => (
+                    <div key={key}><h4>{{scope: "합의 범위", acceptanceCriteria: "수용 기준", exclusions: "제외 범위", unresolvedItems: "미확정 사항"}[key]}</h4><MarkdownPreview markdown={value} /></div>
+                  ))}
                 </details>
               </>
             ) : (
@@ -80,9 +92,7 @@ export function HistoryPage({
             )}
           </div>
           <div className="report-body">
-            <pre>
-              {detail.request.report?.markdown || detail.request.agreement}
-            </pre>
+            <MarkdownPreview markdown={detail.request.report?.markdown || detail.request.agreement} />
             <button
               onClick={() =>
                 downloadMarkdown(

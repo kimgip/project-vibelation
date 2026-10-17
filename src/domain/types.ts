@@ -86,6 +86,7 @@ export interface WorkRequest {
   requirements: RequirementDocument[];
   generations: RequirementGeneration[];
   selectedRequirementDocumentId?: string;
+  requirementAppliedAtInputRevision?: number;
   mocks: MockArtifact[];
   mockJobs: MockJob[];
   selectedMockId?: string;
@@ -135,7 +136,7 @@ export const appliedDocument = (r: WorkRequest) =>
 export const hasAppliedRequirement = (r: WorkRequest) =>
   !!appliedDocument(r) &&
   appliedDocument(r)!.inputSnapshot.requestId === r.id &&
-  appliedDocument(r)!.inputRevision === r.inputRevision &&
+  (r.requirementAppliedAtInputRevision ?? appliedDocument(r)!.inputRevision) === r.inputRevision &&
   uploadsReady(r);
 export const uploadsReady = (r: WorkRequest) =>
   r.attachments.every((a) => a.uploadStatus === "uploaded" && !!a.serverFileId);
@@ -206,20 +207,21 @@ export function editRequest(
   }
   return next;
 }
-export function applyRequirement(r: WorkRequest, id: string): WorkRequest {
+export function applyRequirement(r: WorkRequest, id: string, expectedInputRevision = r.inputRevision): WorkRequest {
   const doc = r.requirements.find((d) => d.id === id);
   if (
     !doc ||
     doc.inputSnapshot.requestId !== r.id ||
-    doc.inputRevision !== r.inputRevision ||
+    expectedInputRevision !== r.inputRevision ||
     !uploadsReady(r)
   )
-    throw new Error("현재 입력 기준의 문서를 생성한 후 적용해주세요.");
+    throw new Error("같은 요청의 요구사항 문서를 선택해주세요. 입력이 변경되었다면 다시 선택해주세요.");
   if (r.selectedRequirementDocumentId === id && hasAppliedRequirement(r))
     return r;
   const next = {
     ...r,
     selectedRequirementDocumentId: id,
+    requirementAppliedAtInputRevision: r.inputRevision,
     selectedMockId: undefined,
     revision: r.revision + 1,
     scopeReviewed: false,

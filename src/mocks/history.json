@@ -1,0 +1,200 @@
+{
+  "items": [
+    {
+      "id": "registration-sample-download",
+      "key": "sample:download",
+      "registeredAt": "2026-10-16T06:00:00Z",
+      "request": {
+        "id": "history-sample-download",
+        "title": "다운로드 센터 다중 선택 개선",
+        "text": "다운로드 센터 다중 선택 개선 요청에 대한 검토 기록입니다.",
+        "html": "",
+        "dueDate": "",
+        "revision": 2,
+        "inputRevision": 1,
+        "legacyVersion": "DEMO-2026.10",
+        "agreement": "",
+        "opinion": "",
+        "attachments": [],
+        "requirements": [
+          {
+            "id": "md-sample-download",
+            "generationId": "generation-sample-download",
+            "generationNumber": 1,
+            "inputRevision": 1,
+            "inputSnapshot": {
+              "requestId": "history-sample-download",
+              "inputRevision": 1,
+              "title": "다운로드 센터 다중 선택 개선",
+              "text": "다운로드 센터 다중 선택 개선 요청에 대한 검토 기록입니다.",
+              "html": "",
+              "attachmentIds": [],
+              "attachmentNames": []
+            },
+            "markdown": "# 다운로드 센터 다중 선택 개선\n\n## 요구사항\n- 사용자가 필요한 자료를 쉽게 찾을 수 있어야 합니다.\n- 기존 권한 정책을 유지합니다.\n\n## 수용 기준\n| 항목 | 기준 |\n| --- | --- |\n| 결과 안내 | 처리 결과를 표시 |\n| 오류 처리 | 재시도 안내 제공 |\n\n> 과거 검토 이력 API 응답을 위한 고정 Mock입니다.",
+            "createdAt": "2026-10-16T06:00:00Z",
+            "source": "mock",
+            "formatVersion": "history-sample-v1"
+          }
+        ],
+        "generations": [],
+        "mocks": [],
+        "mockJobs": [],
+        "reviewedMockIds": [],
+        "confirmations": [
+          {
+            "id": "confirmation-sample-download",
+            "version": 1,
+            "requestId": "history-sample-download",
+            "inputRevision": 1,
+            "confirmedAt": "2026-10-16T06:00:00Z",
+            "draftFingerprint": "[1,\"md-sample-download\"]",
+            "documentSnapshot": {
+              "id": "md-sample-download",
+              "generationId": "generation-sample-download",
+              "generationNumber": 1,
+              "inputRevision": 1,
+              "inputSnapshot": {
+                "requestId": "history-sample-download",
+                "inputRevision": 1,
+                "title": "다운로드 센터 다중 선택 개선",
+                "text": "다운로드 센터 다중 선택 개선 요청에 대한 검토 기록입니다.",
+                "html": "",
+                "attachmentIds": [],
+                "attachmentNames": []
+              },
+              "markdown": "# 다운로드 센터 다중 선택 개선\n\n## 요구사항\n- 사용자가 필요한 자료를 쉽게 찾을 수 있어야 합니다.\n- 기존 권한 정책을 유지합니다.\n\n## 수용 기준\n| 항목 | 기준 |\n| --- | --- |\n| 결과 안내 | 처리 결과를 표시 |\n| 오류 처리 | 재시도 안내 제공 |\n\n> 과거 검토 이력 API 응답을 위한 고정 Mock입니다.",
+              "createdAt": "2026-10-16T06:00:00Z",
+              "source": "mock",
+              "formatVersion": "history-sample-v1"
+            },
+            "mockSnapshot": null,
+            "mockReviewed": null,
+            "agreementSnapshot": {
+              "scope": "",
+              "acceptanceCriteria": "",
+              "exclusions": "",
+              "unresolvedItems": ""
+            }
+          }
+        ],
+        "acceptanceCriteria": "",
+        "exclusions": "",
+        "updatedAt": "2026-10-16T06:00:00Z",
+        "scopeReviewed": false,
+        "estimateReviewed": false,
+        "selectedRequirementDocumentId": "md-sample-download",
+        "activeConfirmationId": "confirmation-sample-download",
+        "report": {
+          "id": "report-sample-download",
+          "basis": {
+            "requestId": "history-sample-download",
+            "revision": 2,
+            "legacyVersion": "DEMO-2026.10",
+            "requirementDocumentId": "md-sample-download",
+            "confirmationId": "confirmation-sample-download"
+          },
+          "markdown": "# 다운로드 센터 다중 선택 개선 검토 리포트\n\n## 검토 결론\n요구사항과 레거시 변경 범위를 검토했습니다.\n\n## 예상 변경\n- 화면 상태 처리 개선\n- 입력 검증 및 결과 안내 추가\n\n## 확인 사항\n- [x] 변경 범위 확인\n- [x] 공수 검토\n\n> 서버 미연결 Mock 이력입니다."
+        }
+      }
+    },
+    {
+      "id": "registration-sample-search",
+      "key": "sample:search",
+      "registeredAt": "2026-10-15T03:00:00Z",
+      "request": {
+        "id": "history-sample-search",
+        "title": "고객지원 자료 검색 개선",
+        "text": "고객지원 자료 검색 개선 요청에 대한 검토 기록입니다.",
+        "html": "",
+        "dueDate": "",
+        "revision": 2,
+        "inputRevision": 1,
+        "legacyVersion": "DEMO-2026.10",
+        "agreement": "",
+        "opinion": "",
+        "attachments": [],
+        "requirements": [
+          {
+            "id": "md-sample-search",
+            "generationId": "generation-sample-search",
+            "generationNumber": 1,
+            "inputRevision": 1,
+            "inputSnapshot": {
+              "requestId": "history-sample-search",
+              "inputRevision": 1,
+              "title": "고객지원 자료 검색 개선",
+              "text": "고객지원 자료 검색 개선 요청에 대한 검토 기록입니다.",
+              "html": "",
+              "attachmentIds": [],
+              "attachmentNames": []
+            },
+            "markdown": "# 고객지원 자료 검색 개선\n\n## 요구사항\n- 사용자가 필요한 자료를 쉽게 찾을 수 있어야 합니다.\n- 기존 권한 정책을 유지합니다.\n\n## 수용 기준\n| 항목 | 기준 |\n| --- | --- |\n| 결과 안내 | 처리 결과를 표시 |\n| 오류 처리 | 재시도 안내 제공 |\n\n> 과거 검토 이력 API 응답을 위한 고정 Mock입니다.",
+            "createdAt": "2026-10-15T03:00:00Z",
+            "source": "mock",
+            "formatVersion": "history-sample-v1"
+          }
+        ],
+        "generations": [],
+        "mocks": [],
+        "mockJobs": [],
+        "reviewedMockIds": [],
+        "confirmations": [
+          {
+            "id": "confirmation-sample-search",
+            "version": 1,
+            "requestId": "history-sample-search",
+            "inputRevision": 1,
+            "confirmedAt": "2026-10-15T03:00:00Z",
+            "draftFingerprint": "[1,\"md-sample-search\"]",
+            "documentSnapshot": {
+              "id": "md-sample-search",
+              "generationId": "generation-sample-search",
+              "generationNumber": 1,
+              "inputRevision": 1,
+              "inputSnapshot": {
+                "requestId": "history-sample-search",
+                "inputRevision": 1,
+                "title": "고객지원 자료 검색 개선",
+                "text": "고객지원 자료 검색 개선 요청에 대한 검토 기록입니다.",
+                "html": "",
+                "attachmentIds": [],
+                "attachmentNames": []
+              },
+              "markdown": "# 고객지원 자료 검색 개선\n\n## 요구사항\n- 사용자가 필요한 자료를 쉽게 찾을 수 있어야 합니다.\n- 기존 권한 정책을 유지합니다.\n\n## 수용 기준\n| 항목 | 기준 |\n| --- | --- |\n| 결과 안내 | 처리 결과를 표시 |\n| 오류 처리 | 재시도 안내 제공 |\n\n> 과거 검토 이력 API 응답을 위한 고정 Mock입니다.",
+              "createdAt": "2026-10-15T03:00:00Z",
+              "source": "mock",
+              "formatVersion": "history-sample-v1"
+            },
+            "mockSnapshot": null,
+            "mockReviewed": null,
+            "agreementSnapshot": {
+              "scope": "",
+              "acceptanceCriteria": "",
+              "exclusions": "",
+              "unresolvedItems": ""
+            }
+          }
+        ],
+        "acceptanceCriteria": "",
+        "exclusions": "",
+        "updatedAt": "2026-10-15T03:00:00Z",
+        "scopeReviewed": false,
+        "estimateReviewed": false,
+        "selectedRequirementDocumentId": "md-sample-search",
+        "activeConfirmationId": "confirmation-sample-search",
+        "report": {
+          "id": "report-sample-search",
+          "basis": {
+            "requestId": "history-sample-search",
+            "revision": 2,
+            "legacyVersion": "DEMO-2026.10",
+            "requirementDocumentId": "md-sample-search",
+            "confirmationId": "confirmation-sample-search"
+          },
+          "markdown": "# 고객지원 자료 검색 개선 검토 리포트\n\n## 검토 결론\n요구사항과 레거시 변경 범위를 검토했습니다.\n\n## 예상 변경\n- 화면 상태 처리 개선\n- 입력 검증 및 결과 안내 추가\n\n## 확인 사항\n- [x] 변경 범위 확인\n- [x] 공수 검토\n\n> 서버 미연결 Mock 이력입니다."
+        }
+      }
+    }
+  ]
+}

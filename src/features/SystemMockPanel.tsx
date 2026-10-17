@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import {
   appliedDocument,
+  hasAppliedRequirement,
   mergeMockJob,
   type WorkRequest,
   type MockJob,
@@ -97,7 +98,7 @@ export function SystemMockPanel({
           <button
             className="primary"
             disabled={
-              !doc || doc.inputRevision !== r.inputRevision || !!job || !saved
+              !doc || !hasAppliedRequirement(r) || !!job || !saved
             }
             onClick={generate}
           >

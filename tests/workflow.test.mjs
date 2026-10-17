@@ -215,7 +215,7 @@ test("same-input regeneration preserves applied document until explicit applicat
   assert.equal(isCurrent(applied, applied.analysis), false);
   assert.equal(canRegister(applied), false);
 });
-test("late generation is retained but cannot become current after editing inputs", () => {
+test("older-input MD requires explicit selection and can then be confirmed", () => {
   const r = prepared();
   const changed = editRequest(r, { html: "<h1>new</h1>" });
   const next = mergeGeneration(changed, {
@@ -229,7 +229,13 @@ test("late generation is retained but cannot become current after editing inputs
   });
   assert.equal(next.requirements.length, 2);
   assert.equal(hasAppliedRequirement(next), false);
-  assert.throws(() => applyRequirement(next, "late-document"));
+  const applied = applyRequirement(next, "late-document");
+  assert.equal(hasAppliedRequirement(applied), true);
+  const confirmed = confirmRequirement(applied);
+  assert.equal(activeConfirmation(confirmed).documentSnapshot.inputRevision, r.inputRevision);
+  assert.equal(hasConfirmedRequirement(confirmed), true);
+  assert.equal(hasAppliedRequirement(editRequest(confirmed, { text: "추가 변경" })), false);
+  assert.throws(() => applyRequirement(next, "late-document", r.inputRevision));
   assert.equal(next.selectedRequirementDocumentId, "doc-1");
 });
 test("legacy notes do not change the confirmed MD analysis", () => {

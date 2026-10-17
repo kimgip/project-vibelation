@@ -1,4 +1,4 @@
-import { Fragment, useState } from "react";
+import { useState } from "react";
 import {
   Sparkles,
   Download,
@@ -142,28 +142,6 @@ export function AnalysisPage({ r, edit, run, busy }: WorkspaceProps) {
                   "없음"}
               </p>
               <small>변경이 필요하면 Step 01에서 수정 후 재확정해주세요.</small>
-            </div>
-          </section>
-          <section className="panel impact-map">
-            <div className="panel-heading">
-              <span>자원 연결 예시</span>
-              <Tag>실제 호출 관계 미확인</Tag>
-            </div>
-            <div className="impact-nodes" aria-label="시연용 영향 자원 연결">
-              {resources.map((resource, index) => (
-                <Fragment key={resource.id}>
-                  {index > 0 && <ChevronRight size={16} aria-hidden="true" />}
-                  <button
-                    aria-pressed={item.id === resource.id}
-                    onClick={() => setSelected(resource.id)}
-                  >
-                    <span className={`type-icon type-${resource.type}`}>
-                      {resource.type}
-                    </span>
-                    <b>{resource.name}</b>
-                  </button>
-                </Fragment>
-              ))}
             </div>
           </section>
         </div>

@@ -85,6 +85,8 @@ function validRequest(v: unknown): v is WorkRequest {
       ))
   )
     return false;
+  if (v.requirementAppliedAtInputRevision !== undefined &&
+    (!Number.isInteger(v.requirementAppliedAtInputRevision) || Number(v.requirementAppliedAtInputRevision) < 1)) return false;
   if (
     v.selectedRequirementDocumentId !== undefined &&
     typeof v.selectedRequirementDocumentId !== "string"
@@ -261,7 +263,7 @@ function migrate(v: unknown): WorkRequest {
       .join("\n"),
   };
 }
-const validRegistration = (v: unknown): v is Registration =>
+export const validRegistration = (v: unknown): v is Registration =>
   object(v) &&
   typeof v.id === "string" &&
   typeof v.key === "string" &&

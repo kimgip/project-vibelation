@@ -53,7 +53,7 @@ export function InputPage(props: WorkspaceProps) {
       );
       let accepted = false;
       update((latest) => {
-        const next = applyRequirement(latest, doc.id);
+        const next = applyRequirement(latest, doc.id, r.inputRevision);
         accepted = true;
         return next;
       });
@@ -404,7 +404,6 @@ export function InputPage(props: WorkspaceProps) {
                       disabled={
                         !saved ||
                         applying ||
-                        doc.inputRevision !== r.inputRevision ||
                         r.attachments.some((a) => a.uploadStatus !== "uploaded")
                       }
                       onClick={() => void applyDocument()}
@@ -419,8 +418,7 @@ export function InputPage(props: WorkspaceProps) {
                   )}
                   {doc.inputRevision !== r.inputRevision && (
                     <p className="panel-note">
-                      현재 입력과 다른 문서입니다. 현재 입력으로 새로 생성한
-                      문서를 적용해주세요.
+                      이전 입력 기준의 문서입니다. 이 문서로 협의하기를 선택하면 해당 MD를 확정·분석 기준으로 사용할 수 있습니다.
                     </p>
                   )}
                   <small>
