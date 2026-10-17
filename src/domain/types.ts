@@ -23,6 +23,7 @@ export interface Impact {
   days: number;
 }
 export interface Analysis {
+  source?: "mock" | "server";
   id?: string;
   basis: Basis;
   impacts: Impact[];
@@ -276,13 +277,16 @@ export interface MockArtifact {
   legacyVersion: string;
   generationNumber: number;
   createdAt: string;
-  source: "mock";
-  renderer: "download-center-demo";
+  source: "mock" | "server";
+  renderer: "download-center-demo" | "server-html";
+  html?: string;
   behaviors: string[];
   assumptions: string[];
   unconnectedFeatures: string[];
 }
 export interface MockJob {
+  transport?: "server";
+  requestId?: string;
   id: string;
   idempotencyKey: string;
   requirementDocumentId: string;

@@ -98,8 +98,8 @@ function validRequest(v: unknown): v is WorkRequest {
       (k) => typeof m[k] === "string",
     ) &&
     Number.isInteger(m.generationNumber) &&
-    m.source === "mock" &&
-    m.renderer === "download-center-demo" &&
+    ((m.source === "mock" && m.renderer === "download-center-demo") ||
+      (m.source === "server" && m.renderer === "server-html" && typeof m.html === "string" && m.html.length <= 2000000)) &&
     ["behaviors", "assumptions", "unconnectedFeatures"].every(
       (k) =>
         Array.isArray(m[k]) &&
