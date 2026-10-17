@@ -13,3 +13,6 @@ dist/
 # Local API interface documents and version history
 /docs/api_interface*.md
 
+# OMC local session/state data
+/.omc/
+
