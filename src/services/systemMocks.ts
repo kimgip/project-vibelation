@@ -1,3 +1,4 @@
+import { systemMockFixture } from "../mocks/fixtures";
 import type { MockJob, RequirementDocument } from "../domain/types";
 const KEY = "vibelation.mock.system-jobs.v1";
 function load(): MockJob[] {
@@ -67,24 +68,11 @@ export const systemMockService = {
         legacyVersion: job.legacyVersion,
         generationNumber: job.generationNumber,
         createdAt: new Date().toISOString(),
-        source: "mock",
-        renderer: "download-center-demo",
-        behaviors: [
-          "최대 10개 선택",
-          "언어 선택",
-          "자료 검색·카테고리",
-          "선택 다운로드 안내",
-        ],
-        assumptions: [
-          "다운로드 센터 고정 시연 시나리오",
-          "실제 레거시 코드를 분석하거나 AI 코드를 실행한 결과가 아닙니다.",
-        ],
-        unconnectedFeatures: [
-          "운영 API",
-          "실제 ZIP 생성",
-          "업무 데이터 저장",
-          "실제 권한 검증",
-        ],
+        source: systemMockFixture.source,
+        renderer: systemMockFixture.renderer,
+        behaviors: [...systemMockFixture.behaviors],
+        assumptions: [...systemMockFixture.assumptions],
+        unconnectedFeatures: [...systemMockFixture.unconnectedFeatures],
       },
     };
     save(next);

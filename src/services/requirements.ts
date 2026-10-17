@@ -1,3 +1,5 @@
+import { requirementFixture } from "../mocks/fixtures";
+import { renderMockTemplate } from "../mocks/template";
 import type {
   InputSnapshot,
   RequirementGeneration,
@@ -140,10 +142,18 @@ export const mockRequirementsService: RequirementsService = {
       generationNumber: g.generationNumber,
       inputRevision: s.inputRevision,
       inputSnapshot: s,
-      source: "mock",
-      formatVersion: "requirement-mock-v3",
+      source: requirementFixture.source,
+      formatVersion: requirementFixture.formatVersion,
       createdAt: new Date().toISOString(),
-      markdown: `# 요구사항 MD · 생성 ${g.generationNumber}\n\n${s.title}\n입력 버전: ${s.inputRevision}\n\n> 서버 미연결 Mock · 입력 전달 계약을 시연합니다. 실제 AI 추출·파일 내용 분석·과거 MD 종합은 수행하지 않습니다.\n\n## 대화·텍스트 원문\n${s.text || "(미입력)"}\n\n## HTML 원문\n\`\`\`html\n${s.html || "<!-- 미입력 -->"}\n\`\`\`\n\n## 첨부 입력\n${s.attachmentNames.map((n) => "- " + n).join("\n") || "(없음)"}\n\n## 담당자 확인 항목 · 고정 시연 양식\n- 원하는 동작과 수용 기준 확인\n- 제외 범위와 남은 의사결정 기록\n- 레거시 영향도는 다음 단계에서 검토\n`,
+      markdown: renderMockTemplate(requirementFixture.markdownTemplate, {
+        generationNumber: g.generationNumber,
+        title: s.title,
+        inputRevision: s.inputRevision,
+        text: s.text || "(미입력)",
+        html: s.html || "<!-- 미입력 -->",
+        attachments:
+          s.attachmentNames.map((n) => "- " + n).join("\n") || "(없음)",
+      }),
     };
     const result = { ...g, status: "succeeded" as const, document };
     save(result);

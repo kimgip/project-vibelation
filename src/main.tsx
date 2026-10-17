@@ -27,7 +27,7 @@ import {
   type Registration,
 } from "./domain/types";
 import { repository, REQUEST_KEY, HISTORY_KEY } from "./storage/repositories";
-import { mockService } from "./services/contract";
+import { mockService, analysisInput } from "./services/contract";
 import {
   InputPage,
   AnalysisPage,
@@ -194,7 +194,10 @@ function App() {
     try {
       const result =
         kind === "analysis"
-          ? await mockService.analyze(snapshot, controller.signal)
+          ? await mockService.analyze(
+              analysisInput(snapshot),
+              controller.signal,
+            )
           : await mockService[kind](snapshot, controller.signal);
       const current = requestsRef.current.find((x) => x.id === snapshot.id);
       if (

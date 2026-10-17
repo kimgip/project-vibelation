@@ -20,7 +20,11 @@ import {
   REQUEST_KEY,
   HISTORY_KEY,
 } from "../src/storage/repositories.ts";
-import { mockService } from "../src/services/contract.ts";
+import {
+  mockService,
+  analysisInput,
+  analysisFormData,
+} from "../src/services/contract.ts";
 class Storage {
   data = new Map();
   fail = false;
@@ -97,7 +101,7 @@ test("registration is idempotent and preserves immutable snapshot", () => {
   const a = repository.register(r);
   assert.equal(repository.register(r).id, a.id);
   r.agreement = "나중에 변경";
-  assert.throws(() => repository.register(r));
+  assert.equal(repository.register(r).id, a.id);
   assert.equal(repository.history().length, 1);
   assert.equal(repository.history()[0].request.agreement, "범위 합의");
   assert.throws(() => repository.register(editRequest(r, { text: "변경" })));
@@ -153,7 +157,7 @@ test("v1 request and report migrate without modifying original values", () => {
 test("mock contract enforces prerequisites and distinguishes old responses", async () => {
   storage.clear();
   let r = blankRequest();
-  await assert.rejects(mockService.analyze(r, new AbortController().signal));
+  assert.throws(() => analysisInput(r));
   r.title = "샘플";
   r.text = "요청";
   r.requirements = [
@@ -172,12 +176,15 @@ test("mock contract enforces prerequisites and distinguishes old responses", asy
   r.selectedRequirementDocumentId = "doc-1";
   r.requirement = { basis: basisOf(r), markdown: "요구" };
   r = confirmRequirement(r);
-  const pending = mockService.analyze(r, new AbortController().signal);
+  const pending = mockService.analyze(
+    analysisInput(r),
+    new AbortController().signal,
+  );
   const changed = editRequest(r, { text: "다른 요청" });
   const result = await pending;
   assert.equal(isCurrent(changed, result), false);
   const abort = new AbortController();
-  const cancelled = mockService.analyze(r, abort.signal);
+  const cancelled = mockService.analyze(analysisInput(r), abort.signal);
   abort.abort();
   await assert.rejects(cancelled, { name: "AbortError" });
 });
@@ -225,12 +232,12 @@ test("late generation is retained but cannot become current after editing inputs
   assert.throws(() => applyRequirement(next, "late-document"));
   assert.equal(next.selectedRequirementDocumentId, "doc-1");
 });
-test("agreement edits preserve applied requirements but invalidate analysis", () => {
+test("legacy notes do not change the confirmed MD analysis", () => {
   const r = prepared();
   const changed = editRequest(r, { agreement: "수정 협의" });
   assert.equal(changed.inputRevision, r.inputRevision);
   assert.equal(hasAppliedRequirement(changed), true);
-  assert.equal(isCurrent(changed, changed.analysis), false);
+  assert.equal(isCurrent(changed, changed.analysis), true);
 });
 test("attachment-only generation requires successful upload", () => {
   let r = blankRequest();
@@ -301,7 +308,7 @@ test("Mock is optional, including when jobs are running or failed and notes are 
     true,
   );
 });
-test("selected unreviewed Mock can be confirmed and stale MD Mock cannot", () => {
+test("Mock selection and notes cannot affect MD-only confirmation", () => {
   const r = prepared();
   const mock = {
     id: "mock-1",
@@ -319,29 +326,40 @@ test("selected unreviewed Mock can be confirmed and stale MD Mock cannot", () =>
     editRequest({ ...r, mocks: [mock] }, { selectedMockId: "mock-1" }),
   );
   assert.equal(hasConfirmedRequirement(c), true);
-  assert.equal(activeConfirmation(c).mockReviewed, false);
+  assert.equal(activeConfirmation(c).mockReviewed, null);
   const snapshot = JSON.stringify(activeConfirmation(c));
   const edited = editRequest(c, { agreement: "new" });
-  assert.equal(hasConfirmedRequirement(edited), false);
+  assert.equal(hasConfirmedRequirement(edited), true);
   assert.equal(
     JSON.stringify(
       edited.confirmations.find((x) => x.id === c.activeConfirmationId),
     ),
     snapshot,
   );
-  assert.throws(() =>
-    confirmRequirement({
-      ...edited,
-      mocks: [{ ...mock, requirementDocumentId: "other" }],
-    }),
+  assert.equal(
+    hasConfirmedRequirement(
+      confirmRequirement({
+        ...edited,
+        mocks: [{ ...mock, requirementDocumentId: "other" }],
+      }),
+    ),
+    true,
   );
 });
 test("new confirmation invalidates previous analysis and rerun invalidates previous report", async () => {
   const r = prepared();
-  const c = confirmRequirement(editRequest(r, { exclusions: "new exclusion" }));
+  const nextDoc = { ...r.requirements[0], id: "doc-2" };
+  const c = confirmRequirement({
+    ...r,
+    requirements: [nextDoc, ...r.requirements],
+    selectedRequirementDocumentId: nextDoc.id,
+  });
   assert.notEqual(c.activeConfirmationId, r.activeConfirmationId);
   assert.equal(isCurrent(c, c.analysis), false);
-  const analysis = await mockService.analyze(r, new AbortController().signal);
+  const analysis = await mockService.analyze(
+    analysisInput(r),
+    new AbortController().signal,
+  );
   assert.equal(canRegister({ ...r, analysis }), false);
 });
 test("late optional Mock is stored without modifying confirmation", () => {
@@ -387,4 +405,19 @@ test("v3 migration preserves old results without inventing a confirmation", () =
   assert.equal(migrated.report.markdown, "검토");
   repository.saveRequest(migrated);
   assert.equal(storage.getItem("vibelation.requests.v3"), raw);
+});
+
+test("analysis payload contains exactly the confirmed MD file", async () => {
+  const r = prepared();
+  r.html = "<h1>communication input</h1>";
+  r.mocks = [{ id: "must-not-send" }];
+  const input = analysisInput(r),
+    body = analysisFormData(input);
+  assert.deepEqual([...body.keys()], ["file"]);
+  assert.equal(body.get("file").name, "requirements.md");
+  assert.equal(
+    await body.get("file").text(),
+    activeConfirmation(r).documentSnapshot.markdown,
+  );
+  assert.equal(activeConfirmation(r).mockSnapshot, null);
 });

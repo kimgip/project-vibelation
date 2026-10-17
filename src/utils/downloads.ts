@@ -22,3 +22,15 @@ export const displayDate = (iso: string) =>
     month: "2-digit",
     day: "2-digit",
   }).format(new Date(iso));
+export function downloadHtml(title: string, html: string) {
+  const name =
+    title.replace(/[<>:"/\\|?*\x00-\x1f]/g, "_").slice(0, 80) || "vibelation";
+  const url = URL.createObjectURL(
+    new Blob([html], { type: "text/html;charset=utf-8" }),
+  );
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `${name}-시스템적용예상화면.html`;
+  anchor.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}

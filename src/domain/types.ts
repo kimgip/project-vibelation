@@ -321,16 +321,7 @@ export const validSelectedMock = (r: WorkRequest) => {
   );
 };
 export const draftFingerprint = (r: WorkRequest) =>
-  JSON.stringify([
-    r.inputRevision,
-    r.selectedRequirementDocumentId,
-    r.selectedMockId || null,
-    r.selectedMockId ? r.reviewedMockIds.includes(r.selectedMockId) : null,
-    r.agreement,
-    r.acceptanceCriteria,
-    r.exclusions,
-    r.opinion,
-  ]);
+  JSON.stringify([r.inputRevision, r.selectedRequirementDocumentId]);
 export const hasConfirmedRequirement = (r: WorkRequest) => {
   const c = activeConfirmation(r);
   return (
@@ -342,12 +333,10 @@ export const hasConfirmedRequirement = (r: WorkRequest) => {
   );
 };
 export const canConfirmRequirement = (r: WorkRequest) =>
-  hasAppliedRequirement(r) && (!r.selectedMockId || validSelectedMock(r));
+  hasAppliedRequirement(r);
 export function confirmRequirement(r: WorkRequest): WorkRequest {
   if (!canConfirmRequirement(r))
-    throw new Error(
-      "현재 입력 기준 MD를 선택해주세요. 다른 문서의 Mock은 제외하거나 새로 생성해주세요.",
-    );
+    throw new Error("현재 입력 기준 요구사항 MD를 선택해주세요.");
   if (hasConfirmedRequirement(r)) return r;
   const c: RequirementConfirmation = {
     id: crypto.randomUUID(),
@@ -357,15 +346,13 @@ export function confirmRequirement(r: WorkRequest): WorkRequest {
     confirmedAt: new Date().toISOString(),
     draftFingerprint: draftFingerprint(r),
     documentSnapshot: structuredClone(appliedDocument(r)!),
-    mockSnapshot: r.selectedMockId ? structuredClone(selectedMock(r)!) : null,
-    mockReviewed: r.selectedMockId
-      ? r.reviewedMockIds.includes(r.selectedMockId)
-      : null,
+    mockSnapshot: null,
+    mockReviewed: null,
     agreementSnapshot: {
-      scope: r.agreement,
-      acceptanceCriteria: r.acceptanceCriteria,
-      exclusions: r.exclusions,
-      unresolvedItems: r.opinion,
+      scope: "",
+      acceptanceCriteria: "",
+      exclusions: "",
+      unresolvedItems: "",
     },
   };
   return {

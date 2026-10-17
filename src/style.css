@@ -3642,3 +3642,4 @@ footer span {
     max-width: 100%;
   }
 }
+.communication-preview { width: 100%; height: 1000px; border: 1px solid #dbe5ef; border-radius: 8px; background: white; margin-top: 16px; }
