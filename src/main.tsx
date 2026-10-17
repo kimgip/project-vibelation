@@ -36,11 +36,13 @@ import {
 } from "./features/workspace";
 import { HistoryPage, TeamPage } from "./features/history";
 import { Empty, Tag } from "./components/shared";
+import { Brand, Landing, type Material } from "./features/Landing";
 import "./style.css";
+import "./soetmul.css";
 const steps = [
-  ["input", "자료 입력·확정", "자료와 화면으로 함께 협의"],
-  ["analysis", "레거시 분석", "변경 범위와 근거 탐색"],
-  ["review", "최종 검토", "결론을 다음 경험으로"],
+  ["input", "쇳물 녹이기", "자료 입력 · 요구사항 확정"],
+  ["analysis", "기존 틀 살펴보기", "레거시 분석 · 변경 범위"],
+  ["review", "검토 리포트", "공수 확인 · 최종 검토"],
 ];
 function load() {
   try {
@@ -141,7 +143,7 @@ function App() {
     setBusy("");
     commit(editRequest(r, patch));
   };
-  const create = () => {
+  const create = (materials: Material[] = []) => {
     if (storageBlocked) {
       setMessage("저장 자료 충돌 또는 손상을 먼저 해결해주세요.");
       return;
@@ -153,7 +155,7 @@ function App() {
       return;
     const next = blankRequest();
     commit(next);
-    navigate(`/requests/${next.id}/input`);
+    navigate(`/requests/${next.id}/input`, { state: { initialMaterial: materials[0] || "text" } });
   };
   useEffect(() => {
     if (location.pathname !== "/requests/new") {
@@ -282,7 +284,7 @@ function App() {
     );
     const a = document.createElement("a");
     a.href = url;
-    a.download = "vibelation-recovery.json";
+    a.download = "soetmul-recovery.json";
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
@@ -305,17 +307,13 @@ function App() {
         saved: saved && !storageBlocked,
       }
     : undefined;
+  if (location.pathname === "/") return <Landing start={create} count={requests.length} />;
   return (
     <div className="app">
       <aside>
-        <Link className="brand" to="/requests">
-          <Layers3 size={28} />
-          <div>
-            VIBELATION<small>상상을 현실로, 경험을 울림으로</small>
-          </div>
-        </Link>
+        <Brand />
         <div className="team-switch">
-          <span className="avatar">V</span>
+          <span className="avatar">쇳</span>
           <div>
             팀 워크스페이스<small>운영 · 개발 협업 공간</small>
           </div>
@@ -385,7 +383,7 @@ function App() {
         <main>
           <div className="page-heading">
             <div>
-              <span className="eyebrow">FROM IDEAS TO IMPACT</span>
+              <span className="eyebrow">요구사항을 녹여, 기존 틀에 붓다</span>
               <h1>
                 {isHistory
                   ? "과거 검토 이력"
@@ -401,7 +399,7 @@ function App() {
                     : "흩어진 요구사항을 모으고, 우리 시스템에 맞는 변화로 연결합니다."}
               </p>
             </div>
-            <button className="primary" onClick={create}>
+            <button className="primary" onClick={() => create()}>
               <Plus size={16} />새 개선 요청
             </button>
           </div>
@@ -548,9 +546,9 @@ function App() {
               <div className="archive-banner">
                 <div>
                   <span className="section-kicker">REQUEST WORKSPACE</span>
-                  <h2>아이디어에서, 함께 정한 방향으로.</h2>
+                  <h2>요구사항을 녹여, 기존 틀에 붓다.</h2>
                   <p>
-                    같은 화면을 보고, 변경의 근거를 확인하고, 경험을 남깁니다.
+                    현업의 자료를 요구사항으로 정리하고, 레거시 시스템의 변경 범위와 공수를 확인합니다.
                   </p>
                 </div>
                 <div className="archive-count">
@@ -593,8 +591,8 @@ function App() {
             </>
           )}
           <footer>
-            <b>VIBELATION</b>
-            <span>상상을 현실로, 경험을 울림으로</span>
+            <b>쇳물</b>
+            <span>요구사항을 녹여, 기존 틀에 붓다</span>
             <span>로컬 Mock · 실제 AI 분석 및 외부 시스템 연동 전</span>
           </footer>
         </main>

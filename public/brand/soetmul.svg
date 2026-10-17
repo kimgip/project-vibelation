@@ -1,0 +1,17 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="76" height="76" viewBox="0 0 76 76" fill="none" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="Frame">
+<path id="Vector" d="M12.6667 10.1333H29.1333" stroke-width="5.06667" stroke-linecap="round" stroke="#F4F1EC"/>
+<path id="Vector_2" d="M27.8667 10.1333C39.2667 10.1333 40.5333 22.8 38 50.6667" stroke-width="5.06667" stroke-linecap="round" stroke="#FF383C"/>
+<g id="Vector_3">
+<use xlink:href="#stroke0_0_25" fill="#E8622C"/>
+<mask id="stroke1_0_25" fill="white">
+<use xlink:href="#stroke0_0_25"/>
+</mask>
+<path d="M20.2667 48.1333H55.7333C56.4329 48.1333 57 48.7004 57 49.4V60.8C57 61.4996 56.4329 62.0667 55.7333 62.0667H20.2667C19.5671 62.0667 19 61.4996 19 60.8V49.4C19 48.7004 19.5671 48.1333 20.2667 48.1333Z" stroke-width="2" stroke="#E8622C" mask="url(#stroke1_0_25)"/>
+</g>
+<path id="Vector_4" d="M15.2 34.2V65.8667H60.8V34.2" stroke-width="5.06667" stroke-linecap="round" stroke-linejoin="round" stroke="#F4F1EC"/>
+</g>
+<defs>
+<path id="stroke0_0_25" d="M55.7333 48.1333H20.2667C19.5671 48.1333 19 48.7004 19 49.4V60.8C19 61.4996 19.5671 62.0667 20.2667 62.0667H55.7333C56.4329 62.0667 57 61.4996 57 60.8V49.4C57 48.7004 56.4329 48.1333 55.7333 48.1333Z"/>
+</defs>
+</svg>

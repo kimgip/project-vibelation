@@ -1,6 +1,7 @@
 import { SystemMockPanel } from "./SystemMockPanel";
 import { RequirementConfirmationPanel } from "./RequirementConfirmationPanel";
 import { useState, useRef, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import {
   Code2,
   Eye,
@@ -26,7 +27,8 @@ import { useRequirements } from "./useRequirements";
 import type { WorkspaceProps } from "./workspace";
 export function InputPage(props: WorkspaceProps) {
   const { r, edit, update, go, saved } = props;
-  const [tab, setTab] = useState("text"),
+  const location = useLocation();
+  const [tab, setTab] = useState(() => { const initial = location.state?.initialMaterial; return ["html", "text", "file"].includes(initial) ? initial : "text"; }),
     [htmlMode, setHtmlMode] = useState("code"),
     [viewId, setViewId] = useState<string>();
   const [applying, setApplying] = useState(false),
@@ -92,9 +94,9 @@ export function InputPage(props: WorkspaceProps) {
       <div className="section-caption">
         <div>
           <span className="section-kicker">STEP 01</span>
-          <h2>현업의 자료에서, 명확한 요구사항으로</h2>
+          <h2>[쇳물 녹이기]</h2>
         </div>
-        <small>입력을 모으고 생성된 요구사항을 검토합니다.</small>
+        <small>선택한 형태별로 요구사항을 넣어주세요. 나중에 자료를 추가/수정할 수 있어요.</small>
       </div>
       <div className="info-strip">
         <FileText size={16} />
@@ -115,9 +117,9 @@ export function InputPage(props: WorkspaceProps) {
           </div>
           <div className="input-tabs" role="tablist" aria-label="입력 방식">
             {[
-              ["text", "대화 · 텍스트"],
+              ["text", "Teams 대화"],
               ["html", "HTML"],
-              ["file", "자료 첨부"],
+              ["file", "PPT · 자료 첨부"],
             ].map(([id, label]) => (
               <button
                 key={id}
@@ -133,7 +135,7 @@ export function InputPage(props: WorkspaceProps) {
             {tab === "text" ? (
               <>
                 <div className="field-line">
-                  <label htmlFor="sourceText">대화 · 회의록 · 메일</label>
+                  <label htmlFor="sourceText">Teams 채팅 · 요청 메시지</label>
                   <button
                     className="text-button"
                     onClick={() =>
@@ -153,7 +155,7 @@ export function InputPage(props: WorkspaceProps) {
                   maxLength={40000}
                   value={r.text}
                   onChange={(e) => edit({ text: e.target.value })}
-                  placeholder="요구사항과 대화 내용을 입력해주세요."
+                  placeholder="Teams로 받은 요청 메시지를 그대로 붙여넣으세요."
                 />
                 <small>
                   탭을 바꿔도 입력은 유지됩니다. 생성 시 모든 탭의 자료를 함께
