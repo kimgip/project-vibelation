@@ -1,63 +1,65 @@
 # VIBELATION
 
-한국어 FE 중심 시연용 MVP. React + Vite + TypeScript.
+React + Vite + TypeScript 기반 한국어 프런트엔드 시연 앱입니다.
 
-## 실행
+## 실행·검증
 
-Node.js 20.19 이상 또는 22.12 이상 환경에서:
+Node.js 24.15 이상을 권장합니다.
 
 ```sh
-npm install
+npm ci
 npm run dev
-```
-
-화면: http://127.0.0.1:5173/project-vibelation/
-
-```sh
+npm test
 npm run build
-npm run preview
 ```
 
-검증: 2026-10-09 Node.js 24.15.0에서 의존성 설치, TypeScript 검사 및 프로덕션 빌드 성공. 브라우저를 통한 시각·사용자 흐름 검증은 아직 수행하지 않았습니다.
+개발 주소: http://127.0.0.1:5173/project-vibelation/
 
-## 시연
+## Step 01 사용법
 
-1. 새 요청 → 샘플 불러오기 → 화면 구체화
-2. Mock 화면 생성 → 협의 시작
-3. 협의 초안 불러오기 → 두 항목 확인 → 협의사항 확정
-4. 검토결과로 이동 → 검토 실행
-5. 영향도 노드, 유사사례, 공수·일정, 리포트 탭 확인
-6. 검토결과 Markdown 다운로드
-7. 협의사항·검토결과 등록 → 이력 상세 조회
+1. 새 개선 요청을 만들고 제목·대화/텍스트·HTML·첨부를 입력합니다. 샘플을 불러올 수도 있습니다.
+2. HTML 탭의 Code/Preview에서 원문과 정적 HTML/CSS 화면을 전환합니다. 전환은 생성 요청을 보내지 않습니다.
+3. ‘요구사항 생성’을 누릅니다. 모든 탭의 현재 입력을 하나의 스냅샷으로 전달합니다.
+4. 생성된 MD는 이력 목록에서 확인·다운로드합니다. 같은 입력으로 반복 생성해도 이전 문서가 남습니다.
+5. ‘이 요구사항으로 다음 단계’를 눌러 분석에 사용할 문서를 명시적으로 적용합니다.
+6. Step 02 레거시 분석 → Step 03 시스템 Mock → Step 04 리포트 생성·두 검토 체크·등록을 진행합니다.
 
-협의사항을 새 버전으로 수정하면 이전 결과 등록이 차단됩니다. 분석을 다시 실행해주세요.
+문서 열람·새 문서 생성만으로 후속 적용 문서는 바뀌지 않습니다. 적용 문서를 변경하면 이전 분석·Mock·리포트는 재검토가 필요합니다. 입력이 바뀌면 이전 MD는 보존하되 적용을 차단합니다. 협의 내용만 수정한 경우 적용 MD는 유지하고 후속 결과만 무효화합니다.
 
-## 범위
+## 서버 연결과 Mock
 
-- 실제 분석은 수행하지 않으며 고정 시나리오의 mock 응답을 반환합니다.
-- 전체 예상 공수 8일과 총 기간 10근무일은 샘플 값입니다. 1일 기준시간은 미확정입니다.
-- 리포트 목차는 예시자료 수령 후 변경할 임시 mock입니다.
-- 다운로드는 검토결과만 제공합니다. SR·운영보고서는 사람이 별도로 작성합니다.
-- 등록은 BE 전송을 대신하는 브라우저 로컬 저장입니다.
-- 개인정보나 실제 코드를 입력하지 마세요. localStorage는 암호화 저장소가 아닙니다.
-- HTML 미리보기는 sandbox와 CSP로 실행·외부 통신을 제한합니다.
+기본값은 서버 미연결 Mock입니다. 실제 AI 추출·첨부 내용 분석·이전 MD 종합은 수행하지 않습니다. 파일은 실제 File 객체로 어댑터에 전달되지만 Mock은 읽기·메타 응답만 시연합니다. BE 연결 시 `.env.example`을 참고하여 `VITE_REQUIREMENTS_API_URL`을 설정하고 서버를 다시 실행합니다.
 
-## 구조
+`src/services/requirements.ts`의 HTTP 어댑터는 파일 multipart 업로드, 생성 POST와 Idempotency-Key, 작업 상태 조회, 문서 목록의 페이지 조회, 결과 문서 상세 조회, 적용 문서 PUT을 제공합니다. 서버는 아래 타입과 계약을 구현하고 요청 ID 생성/저장·인증·권한·CORS·파일 보존 정책을 맞춰야 합니다. 실제 BE 통합 테스트는 아직 수행하지 않았습니다. Step 02~04는 별도 시연 Mock입니다.
 
-- `src/domain.ts`: 데이터 타입
-- `src/services.ts`: 서비스 인터페이스와 mock 구현, 이력 저장
-- `src/main.tsx`: 라우트별 화면과 사용자 흐름
-- `src/style.css`: 반응형 UI
-- 기술설계서는 로컬에만 보관하며 Git 추적과 배포에서 제외합니다.
+- 업로드 응답: `serverFileId, name, size, type`
+- 생성 시작/상태 응답: `RequirementGeneration` (id, idempotencyKey, generationNumber, status, inputSnapshot, createdAt, error?). 완료 시 `document` 또는 `documentId`를 반환합니다.
+- 목록 응답: `{ items: RequirementDocument[], nextCursor? }`
+- 문서 응답: `RequirementDocument` (id, generationId, generationNumber, inputRevision, inputSnapshot, markdown, createdAt, source, formatVersion)
+- 적용 요청: `{ documentId, expectedInputRevision }` → 200 JSON 또는 204
 
-## GitHub Pages
+FE는 현재 입력 전체와 요청 ID를 전달합니다. 같은 요청의 이전 MD를 조회·종합하는 기능은 향후 BE 책임이며 FE가 기존 본문들을 합쳐 보내지 않습니다.
 
-`main`에 push하면 `.github/workflows/pages.yml`에서 빌드·배포합니다.
-GitHub 저장소 Settings → Pages → Source를 GitHub Actions로 설정하세요.
-예상 주소: https://kimgip.github.io/project-vibelation/
-HashRouter를 사용하여 하위 화면에서 새로고침해도 정적 호스팅의 404를 피합니다.
-입력 내용과 등록 이력은 각 기기·브라우저에만 저장되며 자동 동기화되지 않습니다.
+## 첨부·미리보기
 
-다음 단계: 실제 예시자료로 mock 데이터/리포트 교체, 화면별 모듈 분리, HTTP 서비스 구현, BE API 계약 확정, 브라우저 검증. 현재 그래프는 선택 가능한 SVG 연결 노드이며 확대·이동 기능은 없습니다. 직접 입력한 임의 요청도 같은 샘플 분석을 표시합니다.
+초기 시연의 FE 제한은 파일당 5MiB·최대 5개이며 TXT/MD/HTML/PDF/DOCX/PPTX/PNG/JPG를 받습니다. 운영 지원 형식·용량은 BE와 별도 합의가 필요합니다. 업로드 중·실패·재선택 상태에서는 첨부를 포함한 생성을 차단합니다. 실패 파일의 재시도·제외가 가능합니다. 파일 binary는 localStorage에 넣지 않으므로 업로드 전 새로고침한 파일은 다시 선택해야 합니다.
 
-로컬 초기화: 브라우저 개발자 도구에서 `vibelation.request.v1`과 `vibelation.history.v1`을 삭제합니다.
+HTML은 DOMPurify와 CSSOM으로 정리한 뒤 빈 sandbox iframe과 CSP로 격리합니다. 정적 CSS는 유지하고 JavaScript·이벤트·외부 자원·폼 제출·팝업은 차단합니다. 원문은 별도로 보존하여 서버 전달 시 사용합니다. MD는 읽기 전용 텍스트로 표시해 원시 HTML을 실행하지 않습니다.
+
+## 구조·저장
+
+- `src/domain/types.ts`: 입력 revision·생성 이력·적용 문서·분석 기준
+- `src/features/RequestInput.tsx`, `useRequirements.ts`: Step 01과 생성/업로드 작업
+- `src/services/requirements.ts`: RequirementsService·HTTP·Mock 어댑터
+- `src/services/contract.ts`: 후속 단계 시연 서비스
+- `src/storage/repositories.ts`: 스키마 검증·이전 자료 마이그레이션·등록 스냅샷
+- `src/utils/htmlPreview.ts`: HTML/CSS 정적 표시 정리
+- `tests/`: 버전/문서 선택·지연 응답·복구·멱등성·업로드/API 계약 테스트
+
+새 저장 키는 `vibelation.requests.v3`, `vibelation.history.v3`입니다. v1/v2 키는 읽어 변환하고 원본을 보존합니다. 이전 단일 초안은 ‘이전 로컬 초안’으로 표시하며 자동 적용하지 않습니다. Mock 생성 작업은 `vibelation.mock.requirement-jobs.v1`에 저장해 생성 중 새로고침과 화면 재진입 후 복구합니다.
+
+입력·등록 이력은 기기·브라우저별이며 암호화 저장소가 아닙니다. 실제 개인정보나 기밀 코드를 시연에 입력하지 마세요. 저장 실패 시 메모리 입력을 유지하고 재시도·JSON 복구용 내보내기를 제공합니다. 기술설계서는 로컬 전용으로 Git·배포에서 제외합니다.
+
+## 배포
+
+기존 HashRouter와 `/project-vibelation/` base, GitHub Pages 워크플로를 유지합니다. 이 작업에서는 커밋·push·배포하지 않습니다.

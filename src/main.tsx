@@ -1,30 +1,587 @@
-import React, { useState } from 'react';
-import { createRoot } from 'react-dom/client';
-import { HashRouter, Link, useLocation, useNavigate } from 'react-router-dom';
-import { ArrowUpRight, Layers3, Plus, Check, FileText, History, Sparkles, Download, ChevronRight, Network, Search, CircleHelp } from 'lucide-react';
-import type { WorkRequest } from './domain';
-import { mockService, sample } from './services';
-import './style.css';
-const KEY='vibelation.request.v1';
-const blank=():WorkRequest=>({id:crypto.randomUUID(),title:'',description:'',conversation:'',html:'',dueDate:'',version:1,confirmed:false,items:[]});
-function initial():WorkRequest { try { return JSON.parse(localStorage.getItem(KEY)||'null') || blank(); } catch { return blank(); } }
-function App(){
- const [request,setRequest]=useState<WorkRequest>(initial),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[tab,setTab]=useState('영향도'),[selected,setSelected]=useState('ui'),[query,setQuery]=useState('');
- const location=useLocation(),navigate=useNavigate(); const path=location.pathname; const step=path.endsWith('/mock')?1:path.endsWith('/agreement')?2:path.endsWith('/review')?3:0;
- const isHistory=path.startsWith('/history'); const isList=path==='/requests'||path==='/';
- const update=(next:WorkRequest)=>{try{localStorage.setItem(KEY,JSON.stringify(next));setRequest(next);}catch{setMessage('저장 공간이 부족합니다. 입력 크기를 줄여주세요.');}};
- async function run(action:()=>Promise<void>){if(busy)return;setBusy(true);setMessage('');try{await action();}catch(e){setMessage(e instanceof Error?e.message:'처리에 실패했습니다. 다시 시도해주세요.');}finally{setBusy(false);}}
- const route=(suffix:string)=>`/requests/${request.id}/${suffix}`;
- const download=()=>{if(!request.review)return;const url=URL.createObjectURL(new Blob([request.review.markdown],{type:'text/markdown;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='vibelation-review.md';a.click();URL.revokeObjectURL(url);};
- const preview=`<!doctype html><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'"><style>body{font:14px system-ui;padding:28px;color:#213c35;background:#f9fcfa}h2{font-size:23px}button{background:#23634d;color:white;border:0;padding:10px;margin:8px;border-radius:6px}input{padding:8px;border:1px solid #ddd}table{width:100%;margin-top:30px;border-collapse:collapse}td,th{text-align:left;padding:16px;border-bottom:1px solid #ddd}</style>${request.html}`;
- const history=mockService.listHistory(); const detail=isHistory&&path!='/history'?history.find(x=>x.id===path.split('/')[2]):undefined;
- return <div className="app"><aside><Link className="brand" to="/requests"><Layers3/> VIBELATION<span>WORKSPACE</span></Link><div className="workspace"><span className="avatar">V</span><div>모빌리티 운영팀<small>데모 워크스페이스</small></div></div><div className="navlabel">WORKSPACE</div><Link className={!isHistory?'active':''} to="/requests"><Layers3 size={18}/> 요청 작업실</Link><Link className={isHistory?'active':''} to="/history"><History size={18}/> 과거 검토 이력</Link><div className="asidebottom"><span className="dot"/> Mock 서비스 연결됨<small>입력 데이터는 이 브라우저에 저장됩니다.</small><div><CircleHelp size={16}/> 시연용 MVP · v0.1</div></div></aside>
- <div className="body"><header><span>워크스페이스 <ChevronRight size={13}/> {isHistory?'과거 검토 이력':'요청 작업실'}</span><div><span className="badge">DEMO MODE</span><span className="avatar small">김</span></div></header><main><div className="eyebrow">FROM IDEAS TO IMPACT</div><div className="titlebar"><div><h1>{isHistory?'경험이 쌓이는 곳':isList?'요청 작업실':'요구사항 검토 작업실'}</h1><p>{isHistory?'지난 협의와 검토의 근거를 다음 업무의 시작으로 연결합니다.':'서로 다른 생각을, 구현 가능한 하나의 방향으로.'}</p></div><button className="primary" onClick={()=>{update(blank());navigate('/requests/new');}}><Plus size={17}/> 새 요청</button></div>
- <div className="notice"><Sparkles size={17}/><span>시연용 mock 결과입니다. 실제 분석·공수 산정은 BE·AI 서버에서 수행할 예정입니다.</span><span className="badge">LOCAL MOCK</span></div>
- {message&&<div className="feedback" role="status">{message}</div>}
- {isList?<><div className="stats"><article><span>진행 중 요청</span><strong>{request.title?'01':'00'}<small>개의 아이디어</small></strong></article><article><span>확정 협의사항</span><strong>{request.confirmed?'01':'00'}<small>검토의 기준</small></strong></article><article><span>축적된 검토</span><strong>{String(history.length).padStart(2,'0')}<small>다음의 시작</small></strong></article></div><div className="sectionhead"><h2>최근 작업</h2><span>요구사항부터 검토까지 한 곳에서</span></div>{request.title?<article className="requestcard"><div className="iconbox"><FileText/></div><div><span className="badge">{request.review?'검토 완료':request.confirmed?'협의 확정':'작성 중'}</span><h2>{request.title}</h2><p>{request.description}</p></div><button onClick={()=>navigate(route(request.review?'review':request.confirmed?'agreement':'mock'))}>작업 이어가기 <ArrowUpRight size={16}/></button></article>:<div className="empty"><Layers3 size={38}/><h2>첫 번째 아이디어를 연결해보세요</h2><p>새 요청을 만들거나 샘플 시나리오로 전체 흐름을 살펴보세요.</p><button onClick={()=>{update({...blank(),...sample});navigate('/requests/new');}}>샘플로 시작 <ArrowUpRight size={16}/></button></div>}<div className="journey">{['01 · 화면으로 구체화','02 · 협의사항 확정','03 · 영향과 일정 검토','04 · 경험으로 축적'].map(x=><div key={x}>{x}<p>생각에서 실행까지, 연결되는 업무</p></div>)}</div></>:isHistory?<>{detail?<section className="panel"><Link to="/history">← 목록으로</Link><h2>{detail.request.title}</h2><p>{new Date(detail.registeredAt).toLocaleString('ko-KR')} · 협의 v{detail.request.version}</p><h3>등록된 협의사항</h3>{detail.request.items.map(i=><p key={i.id}>✓ {i.decision}</p>)}<h3>검토결과 리포트</h3><pre>{detail.request.review?.markdown}</pre></section>:<><div className="search"><Search size={18}/><input aria-label="이력 검색" placeholder="제목, 내용, 자원 유형으로 검색" value={query} onChange={e=>setQuery(e.target.value)}/></div><div className="historygrid">{history.filter(h=>(h.request.title+h.request.description+JSON.stringify(h.request.review?.impacts)).toLowerCase().includes(query.toLowerCase())).map(h=><Link className="historycard" to={'/history/'+h.id} key={h.id}><span className="badge">검토 이력 · mock</span><h2>{h.request.title}</h2><p>{h.request.description}</p><div className="tags">{h.request.review?.impacts.map(i=><span key={i.id}>{i.type}</span>)}</div><footer>예상 공수 {h.request.review?.totalDays}일 <ArrowUpRight size={17}/></footer></Link>)}</div>{!history.length&&<div className="empty"><History size={36}/><h2>아직 등록된 검토가 없습니다</h2><p>Service 2에서 협의사항과 리포트를 등록해주세요.</p></div>}</>}</>:<><div className="steps">{['요청 입력','Mock 화면','협의사항','검토결과'].map((x,i)=><Link key={x} className={step===i?'current':''} to={i===0?'/requests/new':route(['','mock','agreement','review'][i])}><span>{i<step?<Check size={14}/>:i+1}</span>{x}</Link>)}</div>
- {step===0?<section className="panel"><div className="sectionhead"><div><h2>어떤 변화가 필요한가요?</h2><p>대화와 화면을 그대로 가져오세요. 함께 검토할 출발점입니다.</p></div><button onClick={()=>update({...blank(),...sample})}>샘플 불러오기</button></div><label>요청 제목<input maxLength={160} value={request.title} onChange={e=>update({...request,title:e.target.value})} placeholder="예: 운행이력 조회 기능 개선"/></label><label>요청 내용<textarea maxLength={20000} value={request.description} onChange={e=>update({...request,description:e.target.value})}/></label><div className="columns"><label>대화 내용<textarea maxLength={20000} value={request.conversation} onChange={e=>update({...request,conversation:e.target.value})} placeholder="Teams 대화 등을 붙여넣으세요"/></label><label>요구사항 HTML<textarea maxLength={50000} value={request.html} onChange={e=>update({...request,html:e.target.value})} placeholder="HTML이 있다면 입력하세요"/></label></div><label>희망 마감일<input type="date" value={request.dueDate} onChange={e=>update({...request,dueDate:e.target.value})}/></label><div className="actions"><button onClick={()=>{if(!request.title.trim()||!request.description.trim()){setMessage('제목과 요청 내용을 입력해주세요.');return;}navigate(route('agreement'));}}>HTML 생성 건너뛰기</button><button className="primary" onClick={()=>{if(!request.title.trim()||!request.description.trim()){setMessage('제목과 요청 내용을 입력해주세요.');return;}navigate(route('mock'));}}>화면 구체화 <ChevronRight size={16}/></button></div></section>:step===1?<section className="panel"><div className="sectionhead"><div><h2>아이디어를 화면으로</h2><p>샘플 시나리오에 준비된 HTML을 반환합니다. 자유 입력 분석은 수행하지 않습니다.</p></div><button disabled={busy} onClick={()=>run(async()=>update({...request,html:await mockService.generateMock()}))}><Sparkles size={16}/>{busy?'생성 중…':'Mock 화면 생성'}</button></div><div className="columns"><div><h3>{request.title||'요청 정보 없음'}</h3><p>{request.description}</p><label>HTML<textarea className="code" maxLength={50000} value={request.html} onChange={e=>update({...request,html:e.target.value})}/></label></div><div><h3>안전한 미리보기</h3><iframe title="요구사항 HTML 미리보기" sandbox="" referrerPolicy="no-referrer" srcDoc={preview}/><p className="muted">스크립트와 외부 자원은 차단됩니다.</p></div></div><div className="actions"><button className="primary" onClick={()=>navigate(route('agreement'))}>협의 시작 <ChevronRight size={16}/></button></div></section>:step===2?<section className="panel"><div className="sectionhead"><div><h2>같은 방향을 확인하는 시간</h2><p>협의 v{request.version} · {request.confirmed?'확정됨':'검토 중'} · 비교 결과는 mock입니다.</p></div><button disabled={busy} onClick={()=>run(async()=>update({...request,items:await mockService.draftAgreement(),confirmed:false,version:request.items.length?request.version+1:request.version}))}>{busy?'불러오는 중…':'협의 초안 불러오기'}</button></div>{!request.items.length&&<div className="empty"><p>협의 초안을 불러와 검토를 시작하세요.</p></div>}{request.items.map((item,index)=><article className="agreement" key={item.id}><h3><span className="number">0{index+1}</span>{item.request}<span className="badge">{item.resolved?'확인 완료':'확인 필요'}</span></h3><div className="columns"><div><small>기존 동작</small><p>{item.current}</p></div><div><small>변경 필요 사항 · mock</small><p>{item.difference}</p></div></div><label>합의 내용<textarea disabled={request.confirmed} value={item.decision} maxLength={4000} onChange={e=>update({...request,items:request.items.map(i=>i.id===item.id?{...i,decision:e.target.value}:i)})}/></label><label className="checkbox"><input type="checkbox" disabled={request.confirmed} checked={item.resolved} onChange={e=>update({...request,items:request.items.map(i=>i.id===item.id?{...i,resolved:e.target.checked}:i)})}/>내용을 확인하고 합의했습니다.</label></article>)}<div className="actions">{request.confirmed?<><button onClick={()=>update({...request,confirmed:false,version:request.version+1})}>새 버전으로 수정</button><button className="primary" onClick={()=>navigate(route('review'))}>검토결과로 이동 <ChevronRight size={16}/></button></>:<button className="primary" disabled={!request.items.length||request.items.some(i=>!i.resolved||!i.decision.trim())} onClick={()=>{update({...request,confirmed:true});setMessage('협의사항을 확정했습니다. 검토결과 단계로 이동할 수 있습니다.');}}>협의사항 확정 <Check size={16}/></button>}</div></section>:<><div className="sectionhead"><div><h2>변경의 범위와 근거</h2><p>협의 v{request.version} · 레거시 DEMO-v1 · 공수 단위: 일</p></div><button className="primary" disabled={busy||!request.confirmed} onClick={()=>run(async()=>update({...request,review:await mockService.review(request)}))}><Sparkles size={16}/>{busy?'검토 중…':'검토 실행'}</button></div>{!request.confirmed&&<div className="feedback">협의사항을 먼저 확정해주세요.</div>}{request.review&&request.review.agreementVersion!==request.version&&<div className="feedback">이전 협의 버전의 결과입니다. 현재 버전으로 다시 검토해주세요.</div>}{request.review?<><div className="stats"><article><span>영향 자원</span><strong>04<small>UI · Logic · API · Permission</small></strong></article><article><span>예상 전체 공수</span><strong>{request.review.totalDays}<small>일 · 통합 검증 2일 포함</small></strong></article><article><span>예상 소요 기간</span><strong>10<small>근무일 · 버퍼 2일 포함</small></strong></article></div><div className="tabs">{['영향도','유사사례','공수·일정','검토결과'].map(t=><button className={tab===t?'chosen':''} key={t} onClick={()=>setTab(t)}>{t}</button>)}</div><section className="panel">{tab==='영향도'?<><div className="sectionhead"><h2><Network size={20}/> 자원 영향도</h2><span className="muted">노드를 선택해 변경 근거를 확인하세요</span></div><div className="graph"><svg viewBox="0 0 800 240" preserveAspectRatio="none" aria-hidden="true"><path d="M130 120 L310 120 L490 120 L670 120"/></svg>{request.review.impacts.map(i=><button key={i.id} className={'node '+i.type+(selected===i.id?' selected':'')} onClick={()=>setSelected(i.id)}><span>{i.type}</span><strong>{i.name}</strong><small>예상 공수 {i.days}일</small></button>)}</div><div className="reason"><strong>{request.review.impacts.find(i=>i.id===selected)?.name}</strong><p>{request.review.impacts.find(i=>i.id===selected)?.reason}</p><small>출처: 준비된 샘플 레거시 데이터 · 실제 코드 분석 아님</small></div></>:tab==='유사사례'?<><h2>운행 현황 다운로드 개선</h2><span className="badge">샘플 유사사례</span><p>조회 화면과 다운로드 API를 함께 변경한 사례로, 권한 검증이라는 공통점이 있습니다.</p><div className="reason">차이점: 대상 데이터와 조회 기간이 달라 공수를 그대로 적용할 수 없습니다. 실제 수행 실적이 확인된 자료는 아직 연결하지 않았습니다.</div></>:tab==='공수·일정'?<><h2>산정 근거 · mock</h2><table><thead><tr><th>자원</th><th>유형</th><th>예상 공수</th></tr></thead><tbody>{request.review.impacts.map(i=><tr key={i.id}><td>{i.name}</td><td>{i.type}</td><td>{i.days}일</td></tr>)}<tr><td>통합 검증</td><td>공통</td><td>2일</td></tr></tbody></table><div className="reason">1인 순차 작업 가정 · 작업 기간 8근무일 + 버퍼 2근무일. 공수와 일정은 서로 다른 값입니다. 시작일·휴일 정책이 없어 희망 마감일({request.dueDate||'미입력'}) 충족 여부는 판단하지 않았습니다. 1일 기준시간과 소수 단위 정책은 미확정입니다.</div></>:<><h2>검토결과 리포트</h2><p>임시 mock 목차입니다. 추후 예시자료에 맞춰 변경합니다.</p><pre>{request.review.markdown}</pre></>}</section><div className="actions"><span className="muted">SR·운영보고서는 리포트를 참고해 직접 작성합니다.</span><button onClick={download}><Download size={16}/> 검토결과 다운로드</button><button className="primary" disabled={busy||!request.confirmed||request.review.agreementVersion!==request.version} onClick={()=>run(async()=>{const result=await mockService.register(request);setMessage('시연용 로컬 등록 완료');navigate('/history/'+result.id);})}>{busy?'등록 중…':'협의사항·검토결과 등록'} <ArrowUpRight size={16}/></button></div></>:<div className="empty"><Network size={38}/><h2>합의된 내용에서 검토를 시작합니다</h2><p>검토 실행 시 준비된 mock 분석 결과를 불러옵니다.</p></div>}</>}
- </>}
- <div className="pagefooter">VIBELATION <span>상상을 현실로, 경험을 울림으로</span><span>개인정보와 실제 소스코드는 입력하지 마세요.</span></div></main></div></div>;
+import React, { useEffect, useRef, useState } from "react";
+import { createRoot } from "react-dom/client";
+import { HashRouter, Link, useLocation, useNavigate } from "react-router-dom";
+import {
+  Layers3,
+  Plus,
+  History,
+  Users,
+  ChevronRight,
+  CircleHelp,
+  Sparkles,
+  ArrowLeft,
+  FileText,
+  Download,
+} from "lucide-react";
+import {
+  blankRequest,
+  editRequest,
+  basisOf,
+  sameBasis,
+  isCurrent,
+  hasAppliedRequirement,
+  appliedDocument,
+  statusOf,
+  type WorkRequest,
+  type Registration,
+} from "./domain/types";
+import { repository, REQUEST_KEY, HISTORY_KEY } from "./storage/repositories";
+import { mockService } from "./services/contract";
+import {
+  InputPage,
+  AnalysisPage,
+  AgreementPage,
+  ReviewPage,
+  type WorkspaceProps,
+} from "./features/workspace";
+import { HistoryPage, TeamPage } from "./features/history";
+import { Empty, Tag } from "./components/shared";
+import "./style.css";
+const steps = [
+  ["input", "자료 입력", "요구사항을 한곳에"],
+  ["analysis", "레거시 분석", "변경 범위와 근거 탐색"],
+  ["agreement", "협의사항 도출", "화면으로 함께 협의"],
+  ["review", "최종 검토", "결론을 다음 경험으로"],
+];
+function load() {
+  try {
+    return {
+      requests: repository.requests(),
+      history: repository.history(),
+      error: "",
+    };
+  } catch (e) {
+    return {
+      requests: [] as WorkRequest[],
+      history: [] as Registration[],
+      error: e instanceof Error ? e.message : "자료를 불러오지 못했습니다.",
+    };
+  }
 }
-createRoot(document.getElementById('root')!).render(<React.StrictMode><HashRouter><App/></HashRouter></React.StrictMode>);
+function App() {
+  const [initial] = useState(load),
+    [requests, setRequests] = useState(initial.requests),
+    [history, setHistory] = useState(initial.history),
+    [message, setMessage] = useState(initial.error),
+    [storageBlocked, setStorageBlocked] = useState(!!initial.error),
+    [saved, setSaved] = useState(true),
+    [busy, setBusy] = useState("");
+  const location = useLocation(),
+    navigate = useNavigate();
+  const parts = location.pathname.split("/");
+  const isHistory = parts[1] === "history",
+    isTeam = parts[1] === "team";
+  const id = parts[2];
+  const r = requests.find((x) => x.id === id);
+  const step = parts[3] === "mock" ? "input" : parts[3] || "input";
+  const index = steps.findIndex((s) => s[0] === step);
+  const requestsRef = useRef(requests),
+    storageBlockedRef = useRef(storageBlocked),
+    active = useRef<{ id: number; controller: AbortController } | null>(null),
+    serial = useRef(0),
+    creatingFromRoute = useRef(false);
+  requestsRef.current = requests;
+  storageBlockedRef.current = storageBlocked;
+  useEffect(() => {
+    const handler = (e: StorageEvent) => {
+      if (e.key === REQUEST_KEY || e.key === HISTORY_KEY) {
+        storageBlockedRef.current = true;
+        active.current?.controller.abort();
+        active.current = null;
+        setBusy("");
+        setStorageBlocked(true);
+        setSaved(false);
+        setMessage(
+          "다른 탭에서 자료가 변경되었습니다. 충돌을 피하려면 저장 자료를 다시 불러와주세요.",
+        );
+      }
+    };
+    window.addEventListener("storage", handler);
+    return () => window.removeEventListener("storage", handler);
+  }, []);
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (!saved) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [saved]);
+  useEffect(() => () => active.current?.controller.abort(), []);
+  const commit = (next: WorkRequest) => {
+    const items = [
+      next,
+      ...requestsRef.current.filter((x) => x.id !== next.id),
+    ];
+    requestsRef.current = items;
+    setRequests(items);
+    if (storageBlockedRef.current) {
+      setSaved(false);
+      return;
+    }
+    try {
+      repository.saveRequest(next);
+      setSaved(true);
+    } catch (e) {
+      setSaved(false);
+      setMessage(
+        e instanceof Error
+          ? e.message
+          : "브라우저 저장 공간이 부족합니다. 입력을 유지했습니다. 저장을 재시도해주세요.",
+      );
+    }
+  };
+  const edit = (patch: Partial<WorkRequest>) => {
+    if (!r) return;
+    active.current?.controller.abort();
+    active.current = null;
+    setBusy("");
+    commit(editRequest(r, patch));
+  };
+  const create = () => {
+    if (storageBlocked) {
+      setMessage("저장 자료 충돌 또는 손상을 먼저 해결해주세요.");
+      return;
+    }
+    if (
+      !saved &&
+      !window.confirm("미저장 변경사항이 있습니다. 새 요청으로 이동할까요?")
+    )
+      return;
+    const next = blankRequest();
+    commit(next);
+    navigate(`/requests/${next.id}/input`);
+  };
+  useEffect(() => {
+    if (location.pathname !== "/requests/new") {
+      creatingFromRoute.current = false;
+      return;
+    }
+    if (!creatingFromRoute.current) {
+      creatingFromRoute.current = true;
+      create();
+    }
+  }, [location.pathname]);
+  const go = (target: string) => r && navigate(`/requests/${r.id}/${target}`);
+  async function run(kind: "analysis" | "systemMock" | "report") {
+    if (!r || active.current) return;
+    const snapshot = structuredClone(r),
+      controller = new AbortController(),
+      token = ++serial.current;
+    active.current = { id: token, controller };
+    setBusy(kind);
+    setMessage("");
+    try {
+      const result =
+        kind === "analysis"
+          ? await mockService.analyze(snapshot, controller.signal)
+          : await mockService[kind](snapshot, controller.signal);
+      const current = requestsRef.current.find((x) => x.id === snapshot.id);
+      if (
+        active.current?.id !== token ||
+        !current ||
+        !sameBasis(basisOf(current), result.basis)
+      )
+        return;
+      commit({
+        ...current,
+        [kind]: result,
+        ...(kind === "report"
+          ? { scopeReviewed: false, estimateReviewed: false }
+          : {}),
+      });
+      setMessage(
+        "현재 버전의 시연용 결과를 준비했습니다. 실제 AI 분석은 연결하지 않았습니다.",
+      );
+    } catch (e) {
+      if (!(e instanceof DOMException && e.name === "AbortError"))
+        setMessage(
+          e instanceof Error
+            ? e.message
+            : "처리에 실패했습니다. 다시 시도해주세요.",
+        );
+    } finally {
+      if (active.current?.id === token) {
+        active.current = null;
+        setBusy("");
+      }
+    }
+  }
+  const register = () => {
+    if (!r || busy || !saved || storageBlocked) return;
+    try {
+      const result = repository.register(r);
+      setHistory(repository.history());
+      setMessage("현재 버전의 검토 리포트를 로컬 이력에 등록했습니다.");
+      navigate(`/history/${result.id}`);
+    } catch (e) {
+      setMessage(
+        e instanceof Error
+          ? e.message
+          : "등록에 실패했습니다. 입력을 보존했습니다.",
+      );
+    }
+  };
+  const reload = () => {
+    if (
+      !saved &&
+      !window.confirm("메모리의 변경사항 대신 저장 자료를 다시 불러올까요?")
+    )
+      return;
+    const data = load();
+    if (data.error) {
+      setMessage(data.error);
+      return;
+    }
+    requestsRef.current = data.requests;
+    setRequests(data.requests);
+    setHistory(data.history);
+    setStorageBlocked(false);
+    setSaved(true);
+    setMessage("저장 자료를 다시 불러왔습니다.");
+  };
+  const backup = () => {
+    const data = {
+      requests: requestsRef.current,
+      stored: Object.fromEntries(
+        [
+          REQUEST_KEY,
+          HISTORY_KEY,
+          "vibelation.requests.v2",
+          "vibelation.history.v2",
+          "vibelation.request.v1",
+          "vibelation.history.v1",
+        ].map((k) => [k, localStorage.getItem(k)]),
+      ),
+    };
+    const url = URL.createObjectURL(
+      new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }),
+    );
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "vibelation-recovery.json";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+  const props: WorkspaceProps | undefined = r
+    ? {
+        r,
+        edit,
+        update: (change) => {
+          const latest = requestsRef.current.find((x) => x.id === r.id);
+          if (latest) commit(change(latest));
+        },
+        check: (patch) => {
+          const latest = requestsRef.current.find((x) => x.id === r.id);
+          if (latest) commit({ ...latest, ...patch });
+        },
+        run,
+        busy,
+        go,
+        register,
+        saved: saved && !storageBlocked,
+      }
+    : undefined;
+  return (
+    <div className="app">
+      <aside>
+        <Link className="brand" to="/requests">
+          <Layers3 size={28} />
+          <div>
+            VIBELATION<small>상상을 현실로, 경험을 울림으로</small>
+          </div>
+        </Link>
+        <div className="team-switch">
+          <span className="avatar">V</span>
+          <div>
+            팀 워크스페이스<small>운영 · 개발 협업 공간</small>
+          </div>
+        </div>
+        <div className="nav-label">WORKSPACE</div>
+        {[
+          ["/requests", "요청 작업실", Layers3],
+          ["/history", "과거 검토 이력", History],
+          ["/team", "팀 진행 현황", Users],
+        ].map(([path, label, Icon]) => {
+          const I = Icon as typeof Layers3;
+          return (
+            <Link
+              key={String(path)}
+              title={String(label)}
+              aria-label={String(label)}
+              aria-current={
+                location.pathname.startsWith(String(path)) ? "page" : undefined
+              }
+              className={`nav-item ${location.pathname.startsWith(String(path)) ? "active" : ""}`}
+              to={String(path)}
+            >
+              <I size={18} />
+              <span>{String(label)}</span>
+            </Link>
+          );
+        })}
+        <div className="aside-project">
+          <small>분석 대상 프로젝트</small>
+          <b>다운로드 센터</b>
+          <span>DEMO-2026.10 · 샘플 참조</span>
+        </div>
+        <div className="aside-bottom">
+          <div className="help-box">
+            <CircleHelp size={18} />
+            <b>같이 보고, 근거로 판단해요.</b>
+            <p>
+              이번의 검토가 다음 업무의
+              <br />
+              좋은 시작이 됩니다.
+            </p>
+          </div>
+          <div className="profile">
+            <span className="avatar">김</span>
+            <div>
+              운영 담당자<small>로컬 시연 워크스페이스</small>
+            </div>
+          </div>
+        </div>
+      </aside>
+      <div className="body">
+        <header>
+          <span>
+            워크스페이스 <ChevronRight size={12} />{" "}
+            <b>
+              {isHistory
+                ? "과거 검토 이력"
+                : isTeam
+                  ? "팀 진행 현황"
+                  : "요청 작업실"}
+            </b>
+          </span>
+          <span className="demo-label">
+            LOCAL MOCK <span className="avatar">김</span>
+          </span>
+        </header>
+        <main>
+          <div className="page-heading">
+            <div>
+              <span className="eyebrow">FROM IDEAS TO IMPACT</span>
+              <h1>
+                {isHistory
+                  ? "과거 검토 이력"
+                  : isTeam
+                    ? "팀 진행 현황"
+                    : "요청 작업실"}
+              </h1>
+              <p>
+                {isHistory
+                  ? "함께 검토한 근거와 결론이, 다음 요청의 시작이 됩니다."
+                  : isTeam
+                    ? "함께하는 업무의 흐름과 놓치기 쉬운 일정을 한눈에 확인하세요."
+                    : "흩어진 요구사항을 모으고, 우리 시스템에 맞는 변화로 연결합니다."}
+              </p>
+            </div>
+            <button className="primary" onClick={create}>
+              <Plus size={16} />새 개선 요청
+            </button>
+          </div>
+          {message && (
+            <div className="toast" role="status">
+              <Sparkles size={16} />
+              <span>{message}</span>
+              <button aria-label="알림 닫기" onClick={() => setMessage("")}>
+                ×
+              </button>
+            </div>
+          )}
+          {(!saved || storageBlocked) && (
+            <div className="stale-warning" role="alert">
+              <span>
+                {storageBlocked
+                  ? "저장 충돌·손상 확인 필요"
+                  : "변경사항 미저장 · 입력은 메모리에 유지됩니다."}
+              </span>
+              {!storageBlocked && r && (
+                <button onClick={() => commit(r)}>저장 재시도</button>
+              )}
+              <button onClick={reload}>저장 자료 다시 불러오기</button>
+              <button onClick={backup}>
+                <Download size={13} />
+                복구용 내보내기
+              </button>
+            </div>
+          )}
+          {isHistory ? (
+            <HistoryPage items={history} id={id} />
+          ) : isTeam ? (
+            <TeamPage />
+          ) : r && props ? (
+            <>
+              <div className="request-banner">
+                <div className="request-meta">
+                  <Tag>{statusOf(r)}</Tag>
+                  <span>
+                    입력 v{r.inputRevision} · 검토 v{r.revision}
+                  </span>
+                  <span>{r.legacyVersion}</span>
+                  {appliedDocument(r) && (
+                    <span>
+                      적용 MD 생성 {appliedDocument(r)!.generationNumber} · 입력
+                      v{appliedDocument(r)!.inputRevision}
+                    </span>
+                  )}
+                </div>
+                <label className="title-label">
+                  요청 제목
+                  <input
+                    className="title-input"
+                    value={r.title}
+                    maxLength={160}
+                    placeholder="새 개선 요청의 제목을 입력해주세요"
+                    onChange={(e) => edit({ title: e.target.value })}
+                  />
+                </label>
+                <div className="banner-bottom">
+                  <label>
+                    희망 완료일{" "}
+                    <input
+                      aria-label="희망 완료일"
+                      type="date"
+                      value={r.dueDate}
+                      onChange={(e) => edit({ dueDate: e.target.value })}
+                    />
+                  </label>
+                  <small aria-live="polite">
+                    {saved ? "브라우저에 자동 저장" : "미저장 변경사항 있음"}
+                  </small>
+                </div>
+              </div>
+              <nav className="stepper" aria-label="요구사항 검토 단계">
+                {steps.map(([key, label, desc], i) => (
+                  <Link
+                    key={key}
+                    to={`/requests/${r.id}/${key}`}
+                    aria-current={step === key ? "step" : undefined}
+                    className={`step ${step === key ? "active" : ""}`}
+                  >
+                    <span className="step-number">{i + 1}</span>
+                    <span>
+                      <b>{label}</b>
+                      <small>{desc}</small>
+                    </span>
+                    {i < 3 && <ChevronRight size={14} />}
+                  </Link>
+                ))}
+              </nav>
+              {[r.requirement, r.analysis, r.systemMock, r.report].some(
+                (a) => a && !isCurrent(r, a),
+              ) && (
+                <div className="stale-warning">
+                  입력 또는 적용 문서가 변경되었습니다. 요구사항 MD 생성·적용 →
+                  레거시 분석 → 시스템 Mock → 리포트를 현재 버전으로
+                  갱신해주세요.
+                </div>
+              )}
+              {step === "input" ? (
+                <InputPage {...props} />
+              ) : step === "analysis" ? (
+                <AnalysisPage {...props} />
+              ) : step === "agreement" ? (
+                <AgreementPage {...props} />
+              ) : step === "review" ? (
+                <ReviewPage {...props} />
+              ) : (
+                <Empty>해당 단계를 찾을 수 없습니다.</Empty>
+              )}
+              <div className="workflow-footer">
+                <small>협의 중 언제든 이전 단계로 돌아갈 수 있어요</small>
+                <div>
+                  {index > 0 && (
+                    <button onClick={() => go(steps[index - 1][0])}>
+                      <ArrowLeft size={14} />
+                      이전 단계
+                    </button>
+                  )}
+                  {index >= 0 && index < 3 && (
+                    <button
+                      className="primary"
+                      disabled={index === 0 && !hasAppliedRequirement(r)}
+                      onClick={() => go(steps[index + 1][0])}
+                    >
+                      다음 단계
+                      <ChevronRight size={14} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </>
+          ) : id && id !== "new" ? (
+            <Empty>
+              해당 요청을 찾을 수 없습니다. 요청 작업실 목록에서 다시
+              선택해주세요.
+            </Empty>
+          ) : (
+            <>
+              <div className="archive-banner">
+                <div>
+                  <span className="section-kicker">REQUEST WORKSPACE</span>
+                  <h2>아이디어에서, 함께 정한 방향으로.</h2>
+                  <p>
+                    같은 화면을 보고, 변경의 근거를 확인하고, 경험을 남깁니다.
+                  </p>
+                </div>
+                <div className="archive-count">
+                  <b>{requests.length}</b>
+                  <span>검토 중인 요청</span>
+                </div>
+              </div>
+              <div className="section-caption">
+                <h2>최근 작업</h2>
+                <small>브라우저에 저장된 요청</small>
+              </div>
+              {requests.length ? (
+                <div className="report-list">
+                  {requests.map((x) => (
+                    <Link
+                      className="report-row"
+                      key={x.id}
+                      to={`/requests/${x.id}/input`}
+                    >
+                      <span className="report-icon">
+                        <FileText size={24} />
+                      </span>
+                      <div>
+                        <Tag>{statusOf(x)}</Tag>
+                        <h3>{x.title || "제목 없는 요청"}</h3>
+                        <p>
+                          {x.text.slice(0, 100) || "원본 자료를 입력해주세요."}
+                        </p>
+                        <small>
+                          요구사항 v{x.revision} · {x.legacyVersion}
+                        </small>
+                      </div>
+                      <ChevronRight size={18} />
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <Empty>새 개선 요청을 만들고 샘플을 불러와 시작해보세요.</Empty>
+              )}
+            </>
+          )}
+          <footer>
+            <b>VIBELATION</b>
+            <span>상상을 현실로, 경험을 울림으로</span>
+            <span>로컬 Mock · 실제 AI 분석 및 외부 시스템 연동 전</span>
+          </footer>
+        </main>
+      </div>
+    </div>
+  );
+}
+createRoot(document.getElementById("root")!).render(
+  <React.StrictMode>
+    <HashRouter>
+      <App />
+    </HashRouter>
+  </React.StrictMode>,
+);
