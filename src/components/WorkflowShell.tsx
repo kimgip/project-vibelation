@@ -1,55 +1,30 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   MIN_DUE_DATE,
   MAX_DUE_DATE,
   validDueDate,
 } from "../domain/requestDetails";
 import { Link, useLocation } from "react-router-dom";
-import { Brand } from "../features/Landing";
+import { BrandNavigation } from "../features/Landing";
 import {
   appliedDocument,
   hasAppliedRequirement,
   hasConfirmedRequirement,
   isCurrent,
+  requestTitle,
   type WorkRequest,
 } from "../domain/types";
 
-export function AppHeader({ requests }: { requests: WorkRequest[] }) {
-  const menu = useRef<HTMLDetailsElement>(null);
-  const location = useLocation();
-  useEffect(() => {
-    if (menu.current) menu.current.open = false;
-  }, [location.key]);
+export function AppHeader({
+  requests,
+  start,
+}: {
+  requests: WorkRequest[];
+  start: () => void;
+}) {
   return (
     <div className="workflow-header">
-      <Brand />
-      <details
-        className="brand-navigation"
-        ref={menu}
-        onKeyDown={(e) => {
-          if (e.key === "Escape" && menu.current) {
-            menu.current.open = false;
-            menu.current.querySelector("summary")?.focus();
-          }
-        }}
-      >
-        <summary>
-          작업 메뉴 <span aria-hidden="true">⌄</span>
-        </summary>
-        <nav aria-label="작업 메뉴">
-          <Link to="/">새 쇳물 시작</Link>
-          <Link to="/requests">진행 중인 요청 · {requests.length}</Link>
-          {requests.slice(0, 4).map((r) => (
-            <Link className="request-submenu-link" key={r.id} to={`/requests/${r.id}/input`}>
-              <span className="request-submenu-branch" aria-hidden="true">└</span>
-              <span>{r.title || "제목 없는 요청"}</span>
-            </Link>
-          ))}
-          <Link to="/team">팀 진행 현황</Link>
-          <Link to="/history">과거 검토 이력</Link>
-          <Link to="/settings/legacy">설정 · 레거시 틀 관리</Link>
-        </nav>
-      </details>
+      <BrandNavigation requests={requests} start={start} />
     </div>
   );
 }
@@ -77,15 +52,16 @@ export function WorkflowProgress({
 }) {
   const location = useLocation();
   const view = step === "input" ? inputView(r, location.search) : step;
+  const previewDone = r.mocks.some(
+    (m) =>
+      m.requirementDocumentId === appliedDocument(r)?.id &&
+      m.legacyVersion === r.legacyVersion,
+  );
   const completed = [
     !!r.legacyVersion,
     r.requirements.length > 0,
     hasAppliedRequirement(r),
-    r.mocks.some(
-      (m) =>
-        m.requirementDocumentId === appliedDocument(r)?.id &&
-        m.legacyVersion === r.legacyVersion,
-    ),
+    previewDone,
     isCurrent(r, r.analysis),
     isCurrent(r, r.report),
   ];
@@ -104,10 +80,15 @@ export function WorkflowProgress({
             index < 4
               ? `/requests/${r.id}/input?view=${key}`
               : `/requests/${r.id}/${key}`;
+          const skipped =
+            key === "preview" &&
+            !!r.previewSkipped &&
+            !previewDone &&
+            view !== key;
           return (
             <li
               key={key}
-              className={`${view === key ? "current" : ""} ${completed[index] ? "complete" : ""}`}
+              className={`${view === key ? "current" : ""} ${completed[index] ? "complete" : ""} ${skipped ? "skipped" : ""}`}
             >
               {available ? (
                 <Link
@@ -116,10 +97,16 @@ export function WorkflowProgress({
                   aria-current={view === key ? "step" : undefined}
                 >
                   <span>
-                    {completed[index] && view !== key ? "✓" : index + 1}
+                    {skipped
+                      ? "–"
+                      : completed[index] && view !== key
+                        ? "✓"
+                        : index + 1}
                   </span>
                   {label}
-                  {key === "preview" && <small>선택</small>}
+                  {key === "preview" && (
+                    <small>{skipped ? "건너뜀" : "선택"}</small>
+                  )}
                 </Link>
               ) : (
                 <span aria-disabled="true">
@@ -132,6 +119,77 @@ export function WorkflowProgress({
         })}
       </ol>
     </nav>
+  );
+}
+
+export interface StepAction {
+  label: string;
+  onClick?: () => void;
+  to?: string;
+  disabled?: boolean;
+  /** Tooltip shown on hover. */
+  title?: string;
+  type?: "button" | "submit";
+  form?: string;
+  name?: string;
+}
+function StepButton({
+  action,
+  kind,
+}: {
+  action: StepAction;
+  kind: "primary" | "secondary" | "text";
+}) {
+  const className = `step-button step-button-${kind}`;
+  if (action.to && !action.disabled)
+    return (
+      <Link className={className} to={action.to} title={action.title}>
+        {action.label}
+      </Link>
+    );
+  return (
+    <button
+      className={className}
+      type={action.type || "button"}
+      form={action.form}
+      name={action.name}
+      disabled={action.disabled}
+      title={action.title}
+      onClick={action.onClick}
+    >
+      {action.label}
+    </button>
+  );
+}
+/** Shared bottom bar for every step: [back, backText] … [nextText, reason, next]. */
+export function StepFooter({
+  back,
+  backText,
+  nextText,
+  next,
+  reason,
+}: {
+  back?: StepAction;
+  backText?: StepAction;
+  nextText?: StepAction;
+  next?: StepAction;
+  /** Shown before the primary button while it is disabled. */
+  reason?: string;
+}) {
+  return (
+    <div className="step-footer">
+      <div className="step-footer-group">
+        {back && <StepButton action={back} kind="secondary" />}
+        {backText && <StepButton action={backText} kind="text" />}
+      </div>
+      <div className="step-footer-group">
+        {nextText && <StepButton action={nextText} kind="text" />}
+        {next?.disabled && reason && (
+          <span className="step-footer-reason">{reason}</span>
+        )}
+        {next && <StepButton action={next} kind="primary" />}
+      </div>
+    </div>
   );
 }
 
@@ -187,7 +245,7 @@ export function RequestContext({
       onToggle={(e) => setOpen(e.currentTarget.open)}
     >
       <summary>
-        <span>{r.title || "새 개선 요청"}</span>
+        <span>{requestTitle(r)}</span>
         <span className="context-version">
           {r.legacyVersion.startsWith("zip:")
             ? "코드 ZIP 기준 선택됨"
@@ -231,7 +289,9 @@ export function RequestContext({
             />
           </label>
           <label>
-            희망 완료일
+            <span>
+              희망 완료일 <small>(선택)</small>
+            </span>
             <input
               type="date"
               name="dueDate"

@@ -1,34 +1,13 @@
-import { useState } from "react";
 import {
   activeConfirmation,
-  canConfirmRequirement,
   hasConfirmedRequirement,
   appliedDocument,
 } from "../domain/types";
 import { Tag } from "../components/shared";
 import type { WorkspaceProps } from "./workspace";
-export function RequirementConfirmationPanel({
-  r,
-  saved,
-  busy,
-  confirmAndAnalyze,
-}: WorkspaceProps) {
-  const [error, setError] = useState("");
+export function RequirementConfirmationPanel({ r }: WorkspaceProps) {
   const c = activeConfirmation(r),
     doc = appliedDocument(r);
-  const previewExists = r.mocks.some(
-    (m) =>
-      m.requirementDocumentId === doc?.id &&
-      m.legacyVersion === r.legacyVersion,
-  );
-  function confirm() {
-    try {
-      confirmAndAnalyze();
-      setError("");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "요구사항 확정 실패");
-    }
-  }
   return (
     <section className="panel requirement-confirmation" id="confirmation">
       <div className="panel-heading">
@@ -51,24 +30,6 @@ export function RequirementConfirmationPanel({
               ? `요구사항 v${doc.generationNumber} · 입력 자료 v${doc.generationNumber}`
               : "협의 기준 MD를 선택해주세요."}
           </p>
-        </div>
-        {error && (
-          <p className="inline-error" role="alert">
-            {error}
-          </p>
-        )}
-        <div className="document-actions">
-          <button
-            className="primary"
-            disabled={!saved || !!busy || !canConfirmRequirement(r)}
-            onClick={confirm}
-          >
-            {hasConfirmedRequirement(r)
-              ? "확정된 요구사항으로 분석하기"
-              : previewExists
-                ? "요구사항 확정 후 분석하기"
-                : "Mock 없이 요구사항 확정 후 분석하기"}
-          </button>
         </div>
         {c && (
           <p>

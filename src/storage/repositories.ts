@@ -252,6 +252,7 @@ function migrate(v: unknown): WorkRequest {
     );
   return {
     ...blankRequest(),
+    createdAt: undefined,
     id: v.id,
     title: v.title,
     text: String(v.conversation || v.description),

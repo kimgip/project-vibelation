@@ -98,49 +98,9 @@
   padding: 12px 24px;
   border-radius: 999px;
 }
-.brand-navigation {
-  position: relative;
-  z-index: 20;
-}
-.brand-navigation summary {
-  list-style: none;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  cursor: pointer;
-  padding: 12px 16px;
-  border-radius: 10px;
-  color: var(--muted);
-}
-.brand-navigation summary::-webkit-details-marker {
-  display: none;
-}
-.brand-navigation[open] summary {
-  background: var(--surface-raised);
-}
-.brand-navigation nav {
-  position: absolute;
-  right: 0;
-  width: min(320px, calc(100vw - 40px));
-  padding: 10px;
-  display: grid;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  box-shadow: 0 16px 60px #0007;
-}
-.brand-navigation nav a {
-  padding: 12px 14px;
-  border-radius: 8px;
-  overflow-wrap: anywhere;
-}
-.brand-navigation nav a:hover {
-  background: var(--surface-raised);
-  color: #f2a170;
-}
 .workflow-progress {
-  margin: 0 0 8px;
-  padding: 16px 0 0;
+  margin: 0;
+  padding: 8px 0 24px;
   overflow-x: auto;
 }
 .workflow-progress ol {
@@ -148,46 +108,49 @@
   padding: 0;
   margin: 0;
   list-style: none;
-  min-width: 690px;
   align-items: center;
 }
 .workflow-progress li {
   display: flex;
   align-items: center;
   flex: 1;
-  font-size: 12px;
+  font-size: 14px;
+  font-weight: 400;
   white-space: nowrap;
 }
 .workflow-progress li:last-child {
   flex: 0 0 auto;
 }
+/* Connectors absorb the squeeze first; labels never wrap. */
 .workflow-progress li:not(:last-child)::after {
   content: "";
   height: 1px;
-  margin: 0 6px;
+  margin: 0 10px;
   flex: 1;
-  background: #6f6b65;
-  min-width: 6px;
+  background: #3a3029;
+  min-width: 8px;
 }
 .workflow-progress li > a,
 .workflow-progress li > span {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 8px;
   color: #b1a79c;
 }
 .workflow-progress li > a > span,
 .workflow-progress li > span > span {
-  width: 19px;
-  height: 19px;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
   display: grid;
   place-items: center;
   border: 1px dashed #898781;
   border-radius: 50%;
-  font-size: 10px;
+  font-size: 12px;
 }
 .workflow-progress .current > a {
   color: var(--text);
+  font-weight: 600;
 }
 .workflow-progress .current > a > span {
   color: #15120f;
@@ -198,9 +161,430 @@
   color: #6baf54;
   border: 1px solid #6baf54;
 }
+.workflow-progress .skipped > a,
+.workflow-progress .skipped > a > span {
+  color: #8a7f73;
+}
+.workflow-progress .skipped > a > span {
+  border: 1px dashed #6f6b65;
+}
 .workflow-progress small {
   color: var(--muted);
-  font-size: 9px;
+  font-size: 12px;
+}
+.workflow-progress .skipped small {
+  color: #8a7f73;
+}
+@media (max-width: 1000px) {
+  .workflow-progress li {
+    font-size: 13px;
+  }
+}
+/* Shared underline tabs: text only, orange underline on the selected tab sits on the 1px divider. */
+.underline-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  padding: 0;
+  border-bottom: 1px solid #3a3029;
+}
+.underline-tabs > .underline-tab,
+.underline-tabs > .underline-tab:hover {
+  margin: 0 0 -1px;
+  padding: 12px 0;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: #a89c8e;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.4;
+}
+.underline-tabs > .underline-tab:hover:not(:disabled) {
+  color: #c9bfb2;
+}
+.underline-tabs > .underline-tab[aria-selected="true"] {
+  border-bottom-color: #ff8d28;
+  color: #f3ede4;
+  font-weight: 600;
+}
+.underline-tabs > .underline-tab:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+/* 검토 이력 list: text tones #f3ede4 / #c9bfb2 / #a89c8e only, brown kept for buttons. */
+.history-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin: 0 0 16px;
+}
+.workflow-app .history-toolbar h2 {
+  margin: 0;
+  color: #f3ede4;
+  font-size: 16px;
+  font-weight: 600;
+}
+.history-toolbar h2 span {
+  color: #a89c8e;
+}
+.history-search {
+  position: relative;
+  display: block;
+  width: 280px;
+  max-width: 100%;
+}
+.history-search svg {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  transform: translateY(-50%);
+  color: #a89c8e;
+  pointer-events: none;
+}
+.workflow-app .history-search input {
+  width: 100%;
+  height: 40px;
+  margin: 0;
+  padding: 0 12px 0 36px;
+  border: 1px solid #3a3029;
+  border-radius: 8px;
+  background: transparent;
+  color: #f3ede4;
+  font-size: 14px;
+}
+.workflow-app .history-search input::placeholder {
+  color: #a89c8e;
+}
+.workflow-app .history-search input:focus {
+  border-color: #a89c8e;
+  outline: none;
+}
+.history-cards {
+  display: grid;
+  gap: 12px;
+}
+.workflow-app .history-card {
+  display: grid;
+  gap: 6px;
+  padding: 20px 24px;
+  border: 1px solid #3a3029;
+  border-radius: 12px;
+  background: #1d1915;
+  color: #f3ede4;
+}
+.workflow-app .history-card:hover {
+  border-color: #a89c8e;
+}
+.history-card-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #f3ede4;
+  font-size: 17px;
+  font-weight: 600;
+}
+.history-card-title svg {
+  flex-shrink: 0;
+  color: #a89c8e;
+}
+.history-card-meta {
+  color: #a89c8e;
+  font-size: 13px;
+}
+.history-card-scope {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 6px;
+}
+.history-card-lanes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.history-card-scope b {
+  color: #f3ede4;
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.history-empty {
+  margin: 48px 0;
+  color: #a89c8e;
+  font-size: 14px;
+  text-align: center;
+}
+/* 팀 진행 현황: stat cards double as filters; rows expand in place. */
+.team-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0 0 32px;
+}
+.workflow-app .team-stat,
+.workflow-app .team-stat:hover {
+  display: grid;
+  justify-content: stretch;
+  justify-items: start;
+  align-content: start;
+  min-height: 0;
+  height: auto;
+  gap: 6px;
+  padding: 20px;
+  border: 1px solid #3a3029;
+  border-radius: 12px;
+  background: #1d1915;
+  color: #f3ede4;
+  text-align: left;
+}
+.workflow-app .team-stat:hover {
+  border-color: #6f5e52;
+}
+.workflow-app .team-stat.selected {
+  border-color: #a89c8e;
+  background: #201b16;
+}
+.team-stat span {
+  color: #a89c8e;
+  font-size: 13px;
+}
+.team-stat strong {
+  color: #f3ede4;
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+.team-stat strong.warning {
+  color: #e5484d;
+}
+.workflow-app .team-stat small {
+  color: #a89c8e;
+  font-size: 12px;
+}
+.team-table {
+  table-layout: fixed;
+  min-width: 640px;
+}
+.team-table th,
+.team-table td {
+  padding: 16px;
+  vertical-align: middle;
+  border: 0;
+  border-bottom: 1px solid #3a3029;
+  background: none;
+  color: #f3ede4;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.team-table th:first-child,
+.team-table td:first-child {
+  min-width: 0;
+  max-width: none;
+  padding-left: 0;
+}
+.team-table th {
+  color: #a89c8e;
+  font-size: 13px;
+  font-weight: 500;
+}
+.team-table td:last-child {
+  white-space: normal;
+}
+.team-table tbody tr {
+  cursor: pointer;
+}
+.team-table tbody tr:hover {
+  background: #1d1915;
+}
+.team-table tbody tr.expanded {
+  background: #201b16;
+}
+.team-table tbody tr:focus-visible {
+  outline: 1px solid #a89c8e;
+  outline-offset: -1px;
+}
+.team-title {
+  display: block;
+  color: #f3ede4;
+  font-size: 15px;
+}
+.workflow-app .team-table td small {
+  display: block;
+  margin-top: 2px;
+  color: #a89c8e;
+  font-size: 12px;
+}
+.team-table .team-muted {
+  color: #c9bfb2;
+}
+.team-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #f3ede4;
+  font-size: 14px;
+  font-weight: 400;
+}
+.team-status i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ff8d28;
+}
+.team-status.done {
+  color: #a89c8e;
+}
+.team-due {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  white-space: nowrap;
+}
+.team-overdue {
+  margin-left: 6px;
+  color: #e5484d;
+  font-size: 12px;
+  font-style: normal;
+}
+.team-chevron {
+  flex-shrink: 0;
+  color: #a89c8e;
+  transition: transform 0.15s;
+}
+.team-table tr.expanded .team-chevron {
+  transform: rotate(180deg);
+}
+.team-table tbody tr.team-detail,
+.team-table tbody tr.team-detail:hover {
+  background: none;
+  cursor: default;
+}
+.team-table tr.team-detail td {
+  padding: 0;
+}
+.team-detail td > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 24px;
+  border-left: 3px solid #ac7f5e;
+  background: #1d1915;
+}
+.team-detail-body {
+  display: grid;
+  gap: 4px;
+}
+.workflow-app .team-detail-body small {
+  margin: 0;
+  color: #a89c8e;
+  font-size: 12px;
+}
+.team-detail-body strong {
+  color: #f3ede4;
+  font-size: 15px;
+  font-weight: 600;
+}
+.team-detail-body span {
+  color: #c9bfb2;
+  font-size: 14px;
+}
+.team-detail p {
+  margin: 4px 0 0;
+  color: #c9bfb2;
+  font-size: 14px;
+}
+.workflow-app .team-detail a {
+  flex-shrink: 0;
+  color: #c9bfb2;
+  font-size: 14px;
+}
+.workflow-app .team-detail a:hover {
+  color: #f3ede4;
+  text-decoration: underline;
+}
+@media (max-width: 760px) {
+  .team-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+/* Shared step footer: [secondary, text] … [text, reason, primary]. */
+.step-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 40px 0 0;
+}
+.step-footer-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.step-footer-group:last-child {
+  margin-left: auto;
+  justify-content: flex-end;
+}
+:is(.step-footer, .landing-cta) .step-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+  padding: 0 24px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+:is(.step-footer, .landing-cta) .step-button-primary {
+  background: #ac7f5e;
+  border-color: #ac7f5e;
+  color: #15120f;
+}
+:is(.step-footer, .landing-cta) .step-button-primary:hover:not(:disabled) {
+  background: #c09370;
+  border-color: #c09370;
+}
+:is(.step-footer, .landing-cta) .step-button-secondary {
+  background: transparent;
+  border-color: #3a3029;
+  color: #c9bfb2;
+}
+:is(.step-footer, .landing-cta) .step-button-secondary:hover:not(:disabled) {
+  background: transparent;
+  border-color: #6f5e52;
+  color: #f3ede4;
+}
+:is(.step-footer, .landing-cta) .step-button-text,
+:is(.step-footer, .landing-cta) .step-button-text:hover {
+  background: none;
+  border-color: transparent;
+  color: #c9bfb2;
+}
+:is(.step-footer, .landing-cta) .step-button-text:hover:not(:disabled) {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+:is(.step-footer, .landing-cta) .step-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.step-footer-reason {
+  color: #a89c8e;
+  font-size: 13px;
 }
 .workflow-card {
   background: var(--surface);
@@ -382,11 +766,94 @@
   font-size: 16px;
   line-height: 1.8;
 }
+/* 성분 보기 MD uses the same typeface as the 입력 자료 panel. */
 .document-content .markdown-preview h1,
 .document-content .markdown-preview h2 {
-  font-family: Georgia, "Noto Serif KR", serif;
   color: var(--text);
   border-color: var(--border);
+}
+.document-content .markdown-preview :is(h1, h2, h3, h4, code, pre) {
+  font-family: inherit;
+}
+/* 성분 보기: 협의 기준 state lives in the MD card header. */
+.md-file-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.md-base-badge {
+  padding: 2px 8px;
+  border: 1px solid #ff8d28;
+  border-radius: 999px;
+  color: #ff8d28;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.md-base-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 12px 32px;
+  border-top: 1px solid #3a3029;
+  border-bottom: 1px solid #3a3029;
+  background: #1d1915;
+  color: #c9bfb2;
+  font-size: 13px;
+}
+.workflow-card-heading + .md-base-notice {
+  margin-top: -1px;
+}
+.md-base-notice .md-base-button {
+  height: 36px;
+  padding: 0 18px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.md-base-notice .md-base-button.secondary {
+  border: 1px solid #3a3029;
+  background: transparent;
+  color: #c9bfb2;
+}
+.md-base-notice .md-base-button.primary {
+  border: 1px solid #ac7f5e;
+  background: #ac7f5e;
+  color: #15120f;
+}
+.md-base-error {
+  margin: 12px 32px 0;
+}
+.md-toast {
+  position: fixed;
+  z-index: 40;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 20px;
+  border: 1px solid #3a3029;
+  border-radius: 12px;
+  background: #2a2420;
+  color: #f3ede4;
+  font-size: 14px;
+  box-shadow: 0 12px 32px #00000066;
+}
+.md-toast button,
+.md-toast button:hover {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #f2a170;
+  font-size: 14px;
+  font-weight: 600;
+}
+.md-toast button:hover {
+  text-decoration: underline;
 }
 .document-aside {
   display: grid;
@@ -406,27 +873,65 @@
 .document-aside .primary {
   margin-top: 16px;
 }
-.document-history {
+/* 성분 보기 right column: 요구사항 MD 이력 above 입력 자료. */
+.md-history {
+  min-width: 0;
+  overflow: hidden;
   border: 1px solid var(--border);
-  border-radius: 12px;
-  margin: 0 0 24px;
-}
-.document-history summary {
-  padding: 16px 24px;
-  cursor: pointer;
-  color: var(--muted);
-}
-.document-history .requirement-list {
-  border: 0;
-}
-.workflow-app .requirement-list > button {
+  border-radius: 16px;
   background: var(--surface);
-  color: var(--text);
-  border-color: var(--border);
 }
-.workflow-app .requirement-list > button.selected {
-  background: #2a2420;
-  border-left-color: var(--accent);
+.md-history summary {
+  padding: 16px 20px;
+  color: var(--muted);
+  font-size: 14px;
+  cursor: pointer;
+  user-select: none;
+  caret-color: transparent;
+}
+.md-history summary:focus:not(:focus-visible) {
+  outline: none;
+}
+.md-history-list {
+  display: grid;
+  border-top: 1px solid var(--border);
+}
+.md-history-list > button,
+.md-history-list > button:hover {
+  display: grid;
+  justify-content: stretch;
+  justify-items: start;
+  gap: 4px;
+  width: 100%;
+  padding: 12px 20px 12px 17px;
+  border: 0;
+  border-left: 3px solid transparent;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
+  text-align: left;
+}
+.md-history-list > button:last-child {
+  border-bottom: 0;
+}
+.md-history-list > button:hover {
+  background: #221c17;
+}
+.md-history-list > button.viewing {
+  border-left-color: #ac7f5e;
+  background: #26201a;
+}
+.md-history-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: #f3ede4;
+  font-size: 14px;
+}
+.md-history-list small {
+  color: #a89c8e;
+  font-size: 12px;
 }
 .workflow-app .requirement-confirmation {
   margin-top: 28px;
@@ -524,17 +1029,70 @@
   background: #e8f5ec;
   color: #39875a;
 }
-.workflow-app .report-tabs {
-  padding: 0 24px;
-  border-color: var(--border);
+/* Compact lane badge for table rows; same colours as 탕도 살피기. */
+.workflow-app .type-icon-compact {
+  min-width: 74px;
+  min-height: 0;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 8px;
+  font-size: 13px;
 }
-.workflow-app .report-tabs button {
-  color: var(--muted);
-  padding: 16px 8px;
+/* 붓기 준비 완료 · 영향 범위 table: no box, text tones only, brown kept for buttons. */
+.impact-table {
+  table-layout: fixed;
+  min-width: 640px;
 }
-.workflow-app .report-tabs button[aria-selected="true"] {
+.impact-table th,
+.impact-table td {
+  padding: 16px;
+  vertical-align: middle;
+  border: 0;
+  border-bottom: 1px solid #3a3029;
+  background: none;
   color: #f3ede4;
-  border-color: #fab219;
+  font-size: 15px;
+  line-height: 1.5;
+}
+.impact-table th:first-child,
+.impact-table td:first-child {
+  min-width: 0;
+  max-width: none;
+  padding-left: 0;
+}
+.impact-table th {
+  color: #a89c8e;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.impact-table td small {
+  display: block;
+  margin-top: 4px;
+  color: #a89c8e;
+  font-size: 13px;
+}
+.impact-table .impact-path {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  overflow-wrap: anywhere;
+}
+.impact-table th:last-child,
+.impact-table td:last-child {
+  text-align: right;
+  white-space: nowrap;
+}
+.impact-table tbody tr {
+  cursor: default;
+}
+.impact-table tbody tr:hover {
+  background: #1d1915;
+}
+.impact-table tfoot td {
+  border-bottom: 0;
+  font-weight: 600;
+}
+.impact-table tfoot td:first-child {
+  color: #c9bfb2;
 }
 .workflow-app .report-heading {
   background: transparent;
@@ -604,12 +1162,130 @@
   display: block;
   margin-top: 5px;
 }
+/* Figma 레거시 선택: checkbox per resource row. */
+.legacy-check {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+}
+.legacy-check.checked {
+  border: 0;
+  background: none;
+}
+.legacy-check img {
+  transform: scaleY(-1);
+}
+.screen-type-options {
+  display: flex;
+  gap: 8px;
+}
+.screen-type-options button {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 97px;
+  padding: 12px 8px;
+  border: 1px solid rgba(11, 11, 11, 0.1);
+  border-radius: 8px;
+  background: #201b16;
+  color: #fff;
+  text-align: center;
+}
+.screen-type-options button:hover {
+  border-color: #6f5e52;
+  background: #2a2420;
+}
+.screen-type-options button span {
+  font-size: 16px;
+  line-height: 24px;
+}
+.screen-type-options button small {
+  color: #fff;
+  font-size: 12px;
+}
+.screen-type-options button.selected,
+.screen-type-options button.selected:hover {
+  border-color: #ff8d28;
+  background: #ff8d28;
+}
 .legacy-request-label {
   margin: 40px 0 20px;
 }
 .legacy-system-picker {
   margin: 28px 0;
   max-width: 600px;
+}
+/* 등록된 레거시 틀: native select, dressed to match the dark inputs. */
+.workflow-app .legacy-system-picker select {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  height: 44px;
+  padding: 0 40px 0 14px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 10px;
+  background: #201b16
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23a89c8e' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")
+    no-repeat right 14px center;
+  color: #f3ede4;
+  font-size: 15px;
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+.workflow-app .legacy-system-picker select:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.4);
+  background-color: #2a2420;
+}
+.workflow-app .legacy-system-picker select:focus-visible {
+  border-color: #a89c8e;
+  outline: none;
+}
+.workflow-app .legacy-system-picker select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.workflow-app .legacy-system-picker select option {
+  background: #201b16;
+  color: #f3ede4;
+}
+/* 코드 분류: Figma 설정 레이어의 bordered 프론트엔드|백엔드 toggle. */
+.source-role-field {
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 14px;
+}
+.source-role-toggle {
+  display: inline-flex;
+  justify-self: start;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 8px;
+}
+.workflow-app .source-role-toggle button,
+.workflow-app .source-role-toggle button:hover {
+  padding: 6px 12px 7px;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: #fff;
+  font-size: 12px;
+  line-height: normal;
+}
+.workflow-app .source-role-toggle button:hover:not([aria-pressed="true"]) {
+  background: rgba(255, 255, 255, 0.06);
+}
+.workflow-app .source-role-toggle button[aria-pressed="true"] {
+  background: #cde2fb;
+  color: #184f95;
 }
 .legacy-editor {
   margin-top: 24px;
@@ -768,10 +1444,6 @@
     min-height: 100px;
     padding: 20px 0;
   }
-  .brand-navigation summary {
-    padding: 10px 0 10px 10px;
-    font-size: 13px;
-  }
   .workflow-title h1 {
     font-size: 28px;
   }
@@ -848,16 +1520,6 @@
   .workspace-heading {
     align-items: flex-start;
     flex-direction: column;
-  }
-  .landing-header nav {
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    max-width: 160px;
-    gap: 8px;
-  }
-  .workflow-app .report-tabs {
-    gap: 16px;
-    padding: 0 12px;
   }
 }
 .review-content {
@@ -968,24 +1630,40 @@
 .request-context form > .inline-error {
   margin: 0 24px 20px;
 }
-.source-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+.document-sources-tabs {
   margin: 16px 0;
 }
-.source-tabs button {
-  padding: 8px 10px;
-}
-.source-tabs button[aria-pressed="true"] {
-  background: #ac7f5e;
-  color: #15120f;
-}
-.document-sources label {
-  display: block;
-  color: #c9bfb2;
-  font-size: 13px;
+/* Every tab body starts below a same-height head row, so switching never shifts layout. */
+.source-body-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 28px;
   margin-bottom: 8px;
+}
+.document-sources .source-body-head label {
+  color: #a89c8e;
+  font-size: 12px;
+}
+.source-segment {
+  display: flex;
+  height: 28px;
+  border: 1px solid #3a3029;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.document-sources .source-segment button {
+  padding: 0 10px;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: #a89c8e;
+  font-size: 12px;
+}
+.document-sources .source-segment button[aria-pressed="true"] {
+  background: #3a3029;
+  color: #f3ede4;
 }
 .document-sources textarea {
   min-height: 240px;
@@ -1008,15 +1686,4 @@
   padding-left: 20px;
   overflow-wrap: anywhere;
   line-height: 1.8;
-}
-
-.brand-navigation nav a.request-submenu-link {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  padding-left: 30px;
-}
-.request-submenu-branch {
-  flex-shrink: 0;
-  color: var(--muted);
 }

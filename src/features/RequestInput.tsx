@@ -5,6 +5,11 @@ import {
   appliedDocument,
   hasAppliedRequirement,
   canGenerate,
+  canConfirmRequirement,
+  uploadsReady,
+  restoreSelection,
+  selectionOf,
+  type RequirementSelection,
 } from "../domain/types";
 import { requirementsService } from "../services/requirements";
 import { generationBase } from "../services/generationTransport";
@@ -14,14 +19,16 @@ import {
   inputView,
   RequestContext,
   ScreenTitle,
+  StepFooter,
 } from "../components/WorkflowShell";
-import { downloadMarkdown, displayDate } from "../utils/downloads";
+import { downloadMarkdown, dotDate } from "../utils/downloads";
 import { useRequirements } from "./useRequirements";
 import { MaterialCards } from "./MaterialCards";
 import { DocumentSources } from "./DocumentSources";
 import { LegacyPicker } from "./LegacyPicker";
 import { SystemMockPanel } from "./SystemMockPanel";
-import { RequirementConfirmationPanel } from "./RequirementConfirmationPanel";
+// 미리 붓기의 "협의 및 요구사항 확정" 패널은 잠시 숨김 처리. 다시 쓰려면 아래 import와 JSX 주석을 함께 해제하세요.
+// import { RequirementConfirmationPanel } from "./RequirementConfirmationPanel";
 import type { WorkspaceProps } from "./workspace";
 import type { Material } from "./Landing";
 export function InputPage(props: WorkspaceProps) {
@@ -36,6 +43,16 @@ export function InputPage(props: WorkspaceProps) {
     showResult = useRef(false);
   const selectionController = useRef<AbortController | null>(null);
   useEffect(() => () => selectionController.current?.abort(), []);
+  const [toast, setToast] = useState<{
+    version: number;
+    previous: RequirementSelection;
+    appliedRevision: number;
+  }>();
+  useEffect(() => {
+    if (!toast) return;
+    const timer = window.setTimeout(() => setToast(undefined), 4000);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
   const doc = r.requirements.find((d) => d.id === viewId) || r.requirements[0];
   useEffect(() => {
     const id = r.requirements[0]?.id;
@@ -48,6 +65,28 @@ export function InputPage(props: WorkspaceProps) {
     }
     previous.current = id;
   }, [r.requirements]);
+  // The current 협의 기준, only while it still matches the current input.
+  const base = hasAppliedRequirement(r) ? appliedDocument(r) : undefined;
+  async function undoSelection() {
+    if (!toast) return;
+    const { previous, appliedRevision } = toast;
+    setToast(undefined);
+    setApplyError("");
+    try {
+      if (previous.selectedRequirementDocumentId)
+        await requirementsService.select(
+          r.id,
+          previous.selectedRequirementDocumentId,
+          r.inputRevision,
+          new AbortController().signal,
+        );
+      update((latest) => restoreSelection(latest, previous, appliedRevision));
+    } catch (e) {
+      setApplyError(
+        e instanceof Error ? e.message : "이전 기준으로 되돌리지 못했습니다.",
+      );
+    }
+  }
   async function selectDocument() {
     if (!doc || applying || !saved) return;
     const controller = new AbortController();
@@ -62,7 +101,16 @@ export function InputPage(props: WorkspaceProps) {
         controller.signal,
       );
       if (!controller.signal.aborted)
-        update((latest) => applyRequirement(latest, doc.id, r.inputRevision));
+        update((latest) => {
+          const next = applyRequirement(latest, doc.id, r.inputRevision);
+          if (next !== latest)
+            setToast({
+              version: doc.generationNumber,
+              previous: selectionOf(latest),
+              appliedRevision: next.revision,
+            });
+          return next;
+        });
     } catch (e) {
       if (!controller.signal.aborted)
         setApplyError(
@@ -87,15 +135,29 @@ export function InputPage(props: WorkspaceProps) {
             : "서버 미설정 · 사전 작성된 화면으로 시연합니다. 실제 코드 분석·서버 전송은 수행하지 않습니다."}
         </p>
         <SystemMockPanel r={r} update={update} saved={saved} />
-        <div className="workflow-actions">
-          <button onClick={() => go("input?view=materials")}>
-            자료 추가/수정하기
-          </button>
-          <button onClick={() => go("input?view=requirements")}>
-            성분 보기로 돌아가기
-          </button>
-        </div>
-        <RequirementConfirmationPanel {...props} />
+        {/* <RequirementConfirmationPanel {...props} /> */}
+        <StepFooter
+          back={{
+            label: "‹ 성분 보기",
+            onClick: () => go("input?view=requirements"),
+          }}
+          backText={{
+            label: "+ 자료 추가/수정",
+            onClick: () => go("input?view=materials"),
+          }}
+          next={{
+            label: "탕도 살피기 ›",
+            disabled: !saved || !!props.busy || !canConfirmRequirement(r),
+            onClick: () => props.confirmAndAnalyze(),
+          }}
+          reason={
+            !saved
+              ? "저장이 완료되면 진행할 수 있어요"
+              : props.busy
+                ? "진행 중인 작업이 끝나면 진행할 수 있어요"
+                : "기준 MD를 선택하면 진행할 수 있어요"
+          }
+        />
       </>
     );
   if (view === "materials") {
@@ -133,32 +195,34 @@ export function InputPage(props: WorkspaceProps) {
             ? "서버 미설정 · 파일 내용 분석과 이전 MD 종합은 수행하지 않는 로컬 시연입니다."
             : "현재 입력 전체를 서버로 전달합니다."}
         </p>
-        <div className="workflow-actions">
-          <button onClick={() => go("input?view=legacy")}>
-            &lt; 틀 고르기
-          </button>
-          <div>
-            {r.requirements.length > 0 && (
-              <button onClick={() => go("input?view=requirements")}>
-                기존 MD 보기
-              </button>
-            )}
-            <button
-              className="primary"
-              disabled={!saved || !!actions.pending || !canGenerate(r)}
-              onClick={() => {
-                showResult.current = true;
-                actions.generate();
-              }}
-            >
-              {actions.pending ? "요구사항 정리 중…" : "요구사항 정리하기 >"}
-            </button>
-          </div>
-        </div>
+        <StepFooter
+          back={{
+            label: "‹ 틀 고르기",
+            onClick: () => go("input?view=legacy"),
+          }}
+          next={{
+            label: "성분 보기 ›",
+            disabled: !saved || !!actions.pending || !canGenerate(r),
+            onClick: () => {
+              showResult.current = true;
+              actions.generate();
+            },
+          }}
+          reason={
+            !saved
+              ? "저장이 완료되면 진행할 수 있어요"
+              : actions.pending
+                ? "요구사항 정리가 끝나면 진행할 수 있어요"
+                : !r.title.trim()
+                  ? "요청 제목을 입력하면 진행할 수 있어요"
+                  : !uploadsReady(r)
+                    ? "파일 업로드가 끝나면 진행할 수 있어요"
+                    : "요구사항을 입력하면 진행할 수 있어요"
+          }
+        />
       </>
     );
   }
-  const active = appliedDocument(r);
   return (
     <>
       <ScreenTitle
@@ -176,35 +240,11 @@ export function InputPage(props: WorkspaceProps) {
           {actions.error}
         </p>
       )}
-      <details className="document-history">
-        <summary>
-          문서 이력 · {r.requirements.length}개
-          {active
-            ? ` · 협의 기준: 생성 ${active.generationNumber}`
-            : " · 기준 미선택"}
-        </summary>
-        <div className="requirement-list">
-          {r.requirements.map((d) => (
-            <button
-              key={d.id}
-              aria-pressed={doc?.id === d.id}
-              className={doc?.id === d.id ? "selected" : ""}
-              onClick={() => setViewId(d.id)}
-            >
-              <span>
-                요구사항 v{d.generationNumber} · 입력 자료 v{d.generationNumber}
-                <small>{displayDate(d.createdAt)}</small>
-              </span>
-              <Tag>{active?.id === d.id ? "협의 기준" : "열람"}</Tag>
-            </button>
-          ))}
-        </div>
-      </details>
       {r.generations
         .filter((g) => g.status !== "succeeded")
         .map((g) => (
           <div key={g.id} role="status" className="workflow-info">
-            생성 {g.generationNumber} ·{" "}
+            v{g.generationNumber} ·{" "}
             {g.status === "failed" ? "생성 실패" : "생성 중"}
             {g.error && (
               <>
@@ -222,7 +262,12 @@ export function InputPage(props: WorkspaceProps) {
         <div className="requirements-layout">
           <section className="workflow-card requirement-document">
             <div className="workflow-card-heading">
-              <span>요구사항_v{doc.generationNumber}.md</span>
+              <span className="md-file-name">
+                요구사항_v{doc.generationNumber}.md
+                {base?.id === doc.id && (
+                  <span className="md-base-badge">✓ 협의 기준</span>
+                )}
+              </span>
               <button
                 onClick={() =>
                   downloadMarkdown(
@@ -236,42 +281,67 @@ export function InputPage(props: WorkspaceProps) {
                 MD 다운로드 ↓
               </button>
             </div>
+            {base?.id !== doc.id && (
+              <div className="md-base-notice">
+                <span>
+                  {base
+                    ? `지금 보는 v${doc.generationNumber}은 협의 기준이 아니에요 · 현재 기준 v${base.generationNumber}`
+                    : "이 MD로 다음 단계를 진행하려면 기준으로 정해 주세요"}
+                </span>
+                <button
+                  className={`md-base-button ${base ? "secondary" : "primary"}`}
+                  disabled={
+                    !saved ||
+                    applying ||
+                    r.attachments.some((a) => a.uploadStatus !== "uploaded")
+                  }
+                  onClick={() => void selectDocument()}
+                >
+                  {applying
+                    ? "적용 중…"
+                    : base
+                      ? `v${doc.generationNumber}을 기준으로 정하기`
+                      : "기준으로 정하기"}
+                </button>
+              </div>
+            )}
+            {applyError && (
+              <p role="alert" className="inline-error md-base-error">
+                {applyError}
+              </p>
+            )}
             <div className="document-content">
               <MarkdownPreview markdown={doc.markdown} />
             </div>
           </section>
           <div className="document-aside">
+            <details className="md-history">
+              <summary>
+                요구사항 MD 이력 · {r.requirements.length}개 ·{" "}
+                {base ? `협의 기준 v${base.generationNumber}` : "기준 미선택"}
+              </summary>
+              <div className="md-history-list">
+                {r.requirements.map((d) => (
+                  <button
+                    key={d.id}
+                    aria-pressed={doc.id === d.id}
+                    className={doc.id === d.id ? "viewing" : ""}
+                    onClick={() => setViewId(d.id)}
+                  >
+                    <span className="md-history-title">
+                      요구사항 v{d.generationNumber}
+                      {base?.id === d.id && (
+                        <span className="md-base-badge">✓ 협의 기준</span>
+                      )}
+                    </span>
+                    <small>
+                      입력 자료 v{d.generationNumber} · {dotDate(d.createdAt)}
+                    </small>
+                  </button>
+                ))}
+              </div>
+            </details>
             <DocumentSources key={doc.id} doc={doc} />
-            <section className="workflow-card">
-              <h3>분석 기준 MD</h3>
-              <Tag green={active?.id === doc.id}>
-                {active?.id === doc.id
-                  ? "현재 협의 기준"
-                  : "열람 중 · 아직 미선택"}
-              </Tag>
-              {doc.inputRevision !== r.inputRevision && (
-                <p className="panel-note">
-                  이전 입력 기준 문서입니다. 선택하면 이 MD 원문으로 확정·분석할
-                  수 있습니다.
-                </p>
-              )}
-              <button
-                className="primary"
-                disabled={
-                  !saved ||
-                  applying ||
-                  r.attachments.some((a) => a.uploadStatus !== "uploaded")
-                }
-                onClick={() => void selectDocument()}
-              >
-                {applying ? "문서 적용 중…" : "이 문서로 협의하기"}
-              </button>
-              {applyError && (
-                <p role="alert" className="inline-error">
-                  {applyError}
-                </p>
-              )}
-            </section>
           </div>
         </div>
       ) : (
@@ -279,19 +349,35 @@ export function InputPage(props: WorkspaceProps) {
           생성된 문서가 없습니다. 자료를 넣고 요구사항을 정리해주세요.
         </Empty>
       )}
-      <div className="workflow-actions">
-        <button onClick={() => go("input?view=materials")}>
-          &lt; 자료 추가/수정하기
-        </button>
-        <button
-          className="primary"
-          disabled={!saved || !hasAppliedRequirement(r)}
-          onClick={() => go("input?view=preview")}
-        >
-          레거시에 맞춰 Mock 만들기 &gt;
-        </button>
-      </div>
-      <RequirementConfirmationPanel {...props} />
+      <StepFooter
+        back={{
+          label: "‹ 쇳물 녹이기",
+          onClick: () => go("input?view=materials"),
+        }}
+        nextText={{
+          label: "탕도 살피기로 건너뛰기 ›",
+          title:
+            "화면 변경이 없거나, 이미 확정된 화면이 있을 때 건너뛸 수 있어요",
+          disabled: !saved || !!props.busy || !hasAppliedRequirement(r),
+          onClick: () => props.confirmAndAnalyze({ skipPreview: true }),
+        }}
+        next={{
+          label: "미리 붓기 ›",
+          disabled: !saved || !hasAppliedRequirement(r),
+          onClick: () => go("input?view=preview"),
+        }}
+        reason={
+          !saved
+            ? "저장이 완료되면 진행할 수 있어요"
+            : "기준 MD를 선택하면 진행할 수 있어요"
+        }
+      />
+      {toast && (
+        <div className="md-toast" role="status">
+          <span>v{toast.version}을 협의 기준으로 정했어요</span>
+          <button onClick={() => void undoSelection()}>되돌리기</button>
+        </div>
+      )}
     </>
   );
 }

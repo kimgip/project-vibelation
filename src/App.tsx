@@ -11,14 +11,14 @@ import {
   ScreenTitle,
 } from "./components/WorkflowShell";
 import { Empty, Tag } from "./components/shared";
-import { isCurrent, statusOf } from "./domain/types";
+import { requestTitle, statusOf } from "./domain/types";
 
 export function App() {
   const w = useWorkspace();
   const landing = w.location.pathname === "/";
   return (
     <div className="workflow-app">
-      {!landing && <AppHeader requests={w.requests} />}
+      {!landing && <AppHeader requests={w.requests} start={() => w.create()} />}
       <main className={landing ? "landing-main" : "workflow-main"}>
         {w.message && (
           <div className="workflow-notice" role="status">
@@ -28,39 +28,17 @@ export function App() {
             </button>
           </div>
         )}
-        {(!w.saved || w.storageBlocked) && (
-          <div className="stale-warning" role="alert">
-            <span>
-              {w.storageBlocked
-                ? "저장 충돌·손상 확인 필요"
-                : "변경사항 미저장"}
-            </span>
-            {!w.storageBlocked && w.r && (
-              <button onClick={() => w.commit(w.r!)}>저장 재시도</button>
-            )}
-            <button onClick={w.reload}>저장 자료 다시 불러오기</button>
-            <button onClick={w.backup}>복구용 내보내기</button>
-          </div>
-        )}
         {landing ? (
-          <Landing start={w.create} count={w.requests.length} />
+          <Landing start={w.create} requests={w.requests} />
         ) : w.location.pathname.startsWith("/settings/legacy") ? (
           <LegacySettings />
         ) : w.isHistory ? (
           <HistoryPage items={w.history} id={w.id} />
         ) : w.isTeam ? (
-          <TeamPage />
+          <TeamPage history={w.history} />
         ) : w.r && w.props ? (
           <>
             <WorkflowProgress r={w.r} step={w.step} />
-            {[w.r.analysis, w.r.report].some(
-              (a) => a && !isCurrent(w.r!, a),
-            ) && (
-              <div className="stale-warning">
-                입력 또는 선택 기준이 변경됐습니다. 요구사항을 재확정하고
-                분석·리포트를 갱신해주세요.
-              </div>
-            )}
             {w.step === "input" ? (
               <InputPage key={w.r.id} {...w.props} />
             ) : w.step === "analysis" ? (
@@ -98,7 +76,7 @@ export function App() {
                     <FileText size={24} />
                     <div>
                       <Tag>{statusOf(r)}</Tag>
-                      <h3>{r.title || "제목 없는 요청"}</h3>
+                      <h3>{requestTitle(r)}</h3>
                       <p>
                         {r.text.slice(0, 100) || "원본 자료를 입력해주세요."}
                       </p>

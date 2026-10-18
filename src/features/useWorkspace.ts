@@ -15,7 +15,6 @@ import {
   analysisInput,
   analyzeRequirements,
 } from "../services/contract";
-import { generationBase } from "../services/generationTransport";
 import { sourcesForVersion } from "../storage/legacySources";
 import type { WorkspaceProps } from "./workspace";
 import type { Material } from "./Landing";
@@ -188,7 +187,6 @@ export function useWorkspace() {
       token = ++serial.current;
     active.current = { id: token, controller };
     setBusy(kind);
-    setMessage("");
     try {
       const result =
         kind === "analysis"
@@ -214,11 +212,6 @@ export function useWorkspace() {
           ? { scopeReviewed: false, estimateReviewed: false }
           : {}),
       });
-      setMessage(
-        kind === "analysis" && generationBase
-          ? "서버 분석 결과를 받았습니다."
-          : "현재 버전의 시연 결과입니다. 실제 서버 분석 결과와 구분해주세요.",
-      );
       if (kind === "report") navigate(`/requests/${snapshot.id}/review`);
     } catch (e) {
       if (!(e instanceof DOMException && e.name === "AbortError"))
@@ -239,7 +232,6 @@ export function useWorkspace() {
     try {
       const result = repository.register(r);
       setHistory(repository.history());
-      setMessage("현재 버전의 검토 리포트를 로컬 이력에 등록했습니다.");
       navigate(`/history/${result.id}`);
     } catch (e) {
       setMessage(
@@ -265,7 +257,6 @@ export function useWorkspace() {
     setHistory(data.history);
     setStorageBlocked(false);
     setSaved(true);
-    setMessage("저장 자료를 다시 불러왔습니다.");
   };
   const backup = () => {
     const data = {
@@ -290,11 +281,13 @@ export function useWorkspace() {
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
-  const confirmAndAnalyze = () => {
+  const confirmAndAnalyze = (options: { skipPreview?: boolean } = {}) => {
     if (!r || !saved || storageBlocked || active.current) return;
     try {
       const latest = requestsRef.current.find((x) => x.id === r.id)!;
-      const confirmed = confirmRequirement(latest);
+      const confirmed = options.skipPreview
+        ? { ...confirmRequirement(latest), previewSkipped: true }
+        : confirmRequirement(latest);
       if (!commit(confirmed)) return;
       navigate(`/requests/${r.id}/analysis`, { state: location.state });
       void run("analysis", confirmed);

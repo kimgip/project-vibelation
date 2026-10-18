@@ -219,17 +219,30 @@ export function LegacySettings() {
               </div>
             ))}
             <div className="source-upload">
-              <label>
-                코드 분류
-                <select
-                  aria-label="코드 분류"
-                  value={role}
-                  onChange={(e) => setRole(e.target.value as SourceRole)}
+              <div className="source-role-field">
+                <span id="source-role-label">코드 분류</span>
+                <div
+                  className="source-role-toggle"
+                  role="group"
+                  aria-labelledby="source-role-label"
                 >
-                  <option value="frontend">프론트엔드</option>
-                  <option value="backend">백엔드</option>
-                </select>
-              </label>
+                  {(
+                    [
+                      ["frontend", "프론트엔드"],
+                      ["backend", "백엔드"],
+                    ] as const
+                  ).map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      aria-pressed={role === value}
+                      onClick={() => setRole(value)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <label className="zip-picker">
                 + 압축 파일 추가 · .zip · GitHub Download ZIP
                 <input

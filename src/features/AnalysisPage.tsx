@@ -3,10 +3,13 @@ import {
   hasConfirmedRequirement,
   isCurrent,
   readyForReview,
-  appliedDocument,
 } from "../domain/types";
-import { ScreenTitle, RequestContext } from "../components/WorkflowShell";
-import { Empty, Tag } from "../components/shared";
+import {
+  ScreenTitle,
+  RequestContext,
+  StepFooter,
+} from "../components/WorkflowShell";
+import { Empty, LaneBadge, Tag } from "../components/shared";
 import { generationBase } from "../services/generationTransport";
 import type { WorkspaceProps } from "./workspace";
 export function AnalysisPage({
@@ -20,11 +23,6 @@ export function AnalysisPage({
   const [selected, setSelected] = useState("");
   const resources = isCurrent(r, r.analysis) ? r.analysis?.impacts || [] : [];
   const item = resources.find((i) => i.id === selected) || resources[0];
-  const hasPreview = r.mocks.some(
-    (m) =>
-      m.requirementDocumentId === appliedDocument(r)?.id &&
-      m.legacyVersion === r.legacyVersion,
-  );
   return (
     <>
       <ScreenTitle
@@ -63,9 +61,7 @@ export function AnalysisPage({
                 aria-pressed={item.id === resource.id}
                 onClick={() => setSelected(resource.id)}
               >
-                <span className={`type-icon type-${resource.type}`}>
-                  {resource.type}
-                </span>
+                <LaneBadge type={resource.type} />
                 <span>
                   <b>{resource.name}</b>
                   <small>{resource.path}</small>
@@ -117,22 +113,28 @@ export function AnalysisPage({
             : "요구사항을 먼저 확정한 뒤 분석해주세요."}
         </Empty>
       )}
-      <div className="workflow-actions">
-        <button
-          onClick={() =>
-            go(hasPreview ? "input?view=preview" : "input?view=requirements")
-          }
-        >
-          &lt; {hasPreview ? "미리 붓기" : "성분 보기"}로 돌아가기
-        </button>
-        <button
-          className="primary"
-          disabled={!saved || !!busy || !readyForReview(r)}
-          onClick={() => run("report")}
-        >
-          {busy === "report" ? "리포트 생성 중…" : "최종 리포트 생성하기 >"}
-        </button>
-      </div>
+      <StepFooter
+        back={{
+          label: "‹ 미리 붓기",
+          onClick: () => go("input?view=preview"),
+        }}
+        next={{
+          label: "붓기 준비 완료 ›",
+          disabled: !saved || !!busy || !readyForReview(r),
+          onClick: () => run("report"),
+        }}
+        reason={
+          !saved
+            ? "저장이 완료되면 진행할 수 있어요"
+            : busy === "analysis"
+              ? "분석이 끝나면 진행할 수 있어요"
+              : busy
+                ? "리포트 생성이 끝나면 진행할 수 있어요"
+                : !hasConfirmedRequirement(r)
+                  ? "요구사항을 확정하면 진행할 수 있어요"
+                  : "분석 결과를 받으면 진행할 수 있어요"
+        }
+      />
     </>
   );
 }

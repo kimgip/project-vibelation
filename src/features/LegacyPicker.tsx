@@ -2,8 +2,34 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import type { LegacyReference } from "../domain/legacySources";
 import { legacyRepository } from "../storage/legacySources";
-import { RequestContext, ScreenTitle } from "../components/WorkflowShell";
+import {
+  RequestContext,
+  ScreenTitle,
+  StepFooter,
+} from "../components/WorkflowShell";
 import type { WorkspaceProps } from "./workspace";
+
+const screenTypes = [
+  ["new", "신규", "레거시 스타일로 새 화면"],
+  ["modify", "수정", "기존 화면에 추가"],
+] as const;
+function LegacyCheck({ checked }: { checked: boolean }) {
+  return (
+    <span
+      className={`legacy-check ${checked ? "checked" : ""}`}
+      aria-hidden="true"
+    >
+      {checked && (
+        <img
+          src={`${import.meta.env.BASE_URL}brand/check.svg`}
+          alt=""
+          width="13.02"
+          height="13"
+        />
+      )}
+    </span>
+  );
+}
 
 export function LegacyPicker({ r, edit, go, saved }: WorkspaceProps) {
   const [references, setReferences] = useState<LegacyReference[]>([]),
@@ -48,7 +74,7 @@ export function LegacyPicker({ r, edit, go, saved }: WorkspaceProps) {
             <b>다운로드 센터 · 시연용 틀</b>
             <small>실제 코드 ZIP 없이 로컬 시연합니다.</small>
           </span>
-          <span>{r.legacyVersion === "DEMO-2026.10" ? "✓" : "○"}</span>
+          <LegacyCheck checked={r.legacyVersion === "DEMO-2026.10"} />
         </button>
         {references
           .slice()
@@ -77,31 +103,41 @@ export function LegacyPicker({ r, edit, go, saved }: WorkspaceProps) {
                   · 적용 당시 코드 보존
                 </small>
               </span>
-              <span>{r.legacyVersion === ref.id ? "✓" : "○"}</span>
+              <LegacyCheck checked={r.legacyVersion === ref.id} />
             </button>
           ))}
       </div>
-      <h2 className="legacy-request-label">② 요청 정보</h2>
+      <h2 className="legacy-request-label">② 화면 종류</h2>
+      <div className="screen-type-options">
+        {screenTypes.map(([value, name, detail]) => (
+          <button
+            key={value}
+            className={r.screenType === value ? "selected" : ""}
+            aria-pressed={r.screenType === value}
+            onClick={() => edit({ screenType: value })}
+          >
+            <span>{name}</span>
+            <small>{detail}</small>
+          </button>
+        ))}
+      </div>
+      <h2 className="legacy-request-label">③ 요청 정보</h2>
       <RequestContext
         r={r}
         edit={edit}
         initiallyOpen
         onContinue={() => go("input?view=materials")}
       />
-      <div className="workflow-actions">
-        <Link className="button" to="/">
-          이전
-        </Link>
-        <button
-          className="primary"
-          disabled={!saved}
-          type="submit"
-          form={`request-details-${r.id}`}
-          name="continue"
-        >
-          다음 &gt;
-        </button>
-      </div>
+      <StepFooter
+        next={{
+          label: "쇳물 녹이기 ›",
+          disabled: !saved,
+          type: "submit",
+          form: `request-details-${r.id}`,
+          name: "continue",
+        }}
+        reason="저장이 완료되면 진행할 수 있어요"
+      />
     </>
   );
 }
