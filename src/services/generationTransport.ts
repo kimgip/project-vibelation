@@ -1,3 +1,4 @@
+import { apiBase, createBackendApi } from "./backendApi";
 import {
   generationFormData,
   type SourceArchive,
@@ -13,12 +14,7 @@ export function createGenerationTransport(
     signal: AbortSignal,
     init: RequestInit = {},
   ) {
-    const response = await fetcher(root + path, { ...init, signal });
-    if (!response.ok)
-      throw new Error(
-        `서버 요청에 실패했습니다 (${response.status}). 입력과 코드 ZIP은 보존됩니다.`,
-      );
-    return response.json();
+    return createBackendApi(root, fetcher).request(path, signal, init);
   }
   return {
     async start(
@@ -46,9 +42,7 @@ export function createGenerationTransport(
   };
 }
 
-export const generationBase =
-  (import.meta as ImportMeta & { env?: Record<string, string> }).env
-    ?.VITE_GENERATION_API_URL || "";
+export const generationBase = apiBase;
 export const generationTransport = generationBase
   ? createGenerationTransport(generationBase)
   : undefined;

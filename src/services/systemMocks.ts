@@ -1,4 +1,4 @@
-import { systemMockFixture } from "../mocks/fixtures";
+import { systemMockFixture, localMockSettings } from "../mocks/fixtures";
 import type { MockJob, RequirementDocument } from "../domain/types";
 import { generationTransport } from "./generationTransport";
 import { sourcesForVersion } from "../storage/legacySources";
@@ -139,7 +139,7 @@ export const systemMockService = {
       save(next);
       return next;
     }
-    if (Date.now() - Date.parse(job.createdAt) < 900)
+    if (Date.now() - Date.parse(job.createdAt) < localMockSettings.timing.systemMockReadyMs)
       return { ...job, status: "running" };
     const next: MockJob = {
       ...job,

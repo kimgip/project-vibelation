@@ -143,8 +143,7 @@ export function MaterialCards({
                 />
               </label>
               <small>
-                시연 제한: 파일당 5MiB · 최대 5개 · TXT, MD, HTML, PDF, DOCX,
-                PPTX, PNG, JPG. 코드 ZIP은 설정에서 별도로 등록합니다.
+                시연 제한: 파일당 {FILE_POLICY.maxBytes/1024/1024}MiB · 최대 {FILE_POLICY.maxCount}개 · {FILE_POLICY.extensions.join(", ").toUpperCase()}. 코드 ZIP은 설정에서 별도로 등록합니다.
               </small>
               {r.attachments.map((a) => (
                 <div className="source-package" key={a.id}>

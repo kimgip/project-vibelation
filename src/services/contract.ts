@@ -1,4 +1,4 @@
-import { analysisFixture, reportFixture } from "../mocks/fixtures";
+import { analysisFixture, reportFixture, localMockSettings } from "../mocks/fixtures";
 import { renderMockTemplate } from "../mocks/template";
 import {
   basisOf,
@@ -16,13 +16,13 @@ import {
   type SourceArchive,
 } from "../domain/legacySources";
 import { generationTransport, waitForPoll } from "./generationTransport";
-const wait = (signal: AbortSignal) =>
+const wait = (signal: AbortSignal, delay: number) =>
   new Promise<void>((resolve, reject) => {
     if (signal.aborted) {
       reject(new DOMException("취소됨", "AbortError"));
       return;
     }
-    const timer = setTimeout(resolve, 500);
+    const timer = setTimeout(resolve, delay);
     signal.addEventListener(
       "abort",
       () => {
@@ -68,7 +68,7 @@ export const mockService: VibelationService = {
     const body = analysisFormData(input);
     if (!(body.get("file") instanceof File) || !input.file.name.endsWith(".md"))
       throw new Error("요구사항 MD 파일이 필요합니다.");
-    await wait(s);
+    await wait(s, localMockSettings.timing.analysisDelayMs);
     return {
       basis: input.basis,
       id: crypto.randomUUID(),
@@ -81,7 +81,7 @@ export const mockService: VibelationService = {
       throw new Error(
         "현재 요구사항 확정과 해당 확정 기준의 영향도 분석이 필요합니다. Mock은 필수가 아닙니다.",
       );
-    await wait(s);
+    await wait(s, localMockSettings.timing.reportDelayMs);
     return {
       basis: basisOf(r),
       id: crypto.randomUUID(),
@@ -145,10 +145,10 @@ export async function analyzeRequirements(
     }
     if (job.status === "succeeded") {
       const result =
-        job.result ||
-        (typeof job.analysisId === "string"
+        (Array.isArray(job.result?.impacts) ? job.result : undefined) ||
+        (typeof (job.analysisId || job.result?.id) === "string"
           ? await generationTransport.get(
-              `/analysis-results/${encodeURIComponent(job.analysisId)}`,
+              `/analysis-results/${encodeURIComponent(job.analysisId || job.result.id)}`,
               signal,
             )
           : undefined);

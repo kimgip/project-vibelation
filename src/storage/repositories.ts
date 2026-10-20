@@ -1,15 +1,17 @@
+import { apiBase } from "../services/backendApi";
 import {
   blankRequest,
   canRegister,
   type Registration,
   type WorkRequest,
 } from "../domain/types";
-export const REQUEST_KEY = "vibelation.requests.v4",
-  HISTORY_KEY = "vibelation.history.v4";
+export const REQUEST_KEY = apiBase ? `soetmul.server-cache:${apiBase}:requests` : "vibelation.requests.v4",
+  HISTORY_KEY = apiBase ? `soetmul.server-cache:${apiBase}:history` : "vibelation.history.v4";
 const object = (v: unknown): v is Record<string, unknown> =>
   !!v && typeof v === "object" && !Array.isArray(v);
 function validRequest(v: unknown): v is WorkRequest {
   if (!object(v)) return false;
+  if(v.screenType!==undefined && !["new","modify"].includes(String(v.screenType)))return false;
   const strings = [
     "id",
     "title",
@@ -43,6 +45,7 @@ function validRequest(v: unknown): v is WorkRequest {
   const snapshotValid = (s: unknown) =>
     object(s) &&
     typeof s.requestId === "string" &&
+    (s.screenType===undefined || ["new","modify"].includes(String(s.screenType))) &&
     Number.isInteger(s.inputRevision) &&
     ["title", "text", "html"].every((k) => typeof s[k] === "string") &&
     Array.isArray(s.attachmentIds) &&
@@ -320,6 +323,7 @@ function normalize(r: WorkRequest): WorkRequest {
 }
 export const repository = {
   requests(): WorkRequest[] {
+    if(apiBase)return (read(REQUEST_KEY,validRequest) || []).map(normalize);
     const current =
       read(REQUEST_KEY, validRequest) ??
       read("vibelation.requests.v3", validRequest) ??

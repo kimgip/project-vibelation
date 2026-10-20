@@ -1,4 +1,7 @@
-import { requirementFixture } from "../mocks/fixtures";
+import { apiBase, createBackendApi, operationKey, type Wire } from "./backendApi";
+import { syncInput, serverState, documentFromWire, withServerLock } from "./serverWorkspace";
+import { waitForPoll } from "./generationTransport";
+import { requirementFixture, localMockSettings } from "../mocks/fixtures";
 import { renderMockTemplate } from "../mocks/template";
 import type {
   InputSnapshot,
@@ -15,7 +18,7 @@ export interface RequirementsService {
   readonly mode: "mock" | "server";
   select(
     requestId: string,
-    documentId: string,
+    documentId: string | null,
     inputRevision: number,
     signal: AbortSignal,
   ): Promise<void>;
@@ -36,31 +39,17 @@ export interface RequirementsService {
   ): Promise<RequirementGeneration>;
   list(requestId: string, signal: AbortSignal): Promise<RequirementDocument[]>;
 }
-export const FILE_POLICY = {
-  maxBytes: 5 * 1024 * 1024,
-  maxCount: 5,
-  extensions: [
-    "txt",
-    "md",
-    "html",
-    "pdf",
-    "docx",
-    "pptx",
-    "png",
-    "jpg",
-    "jpeg",
-  ],
-};
+export const FILE_POLICY = localMockSettings.filePolicy;
 export function validateFiles(files: File[], existingCount: number) {
   if (existingCount + files.length > FILE_POLICY.maxCount)
-    throw new Error("시연에서는 최대 5개 파일을 첨부할 수 있습니다.");
+    throw new Error(renderMockTemplate(FILE_POLICY.messages.count,{count:FILE_POLICY.maxCount}));
   for (const f of files) {
     if (f.size > FILE_POLICY.maxBytes)
-      throw new Error(`${f.name}: 시연 파일당 최대 5MiB입니다.`);
+      throw new Error(renderMockTemplate(FILE_POLICY.messages.size,{name:f.name,mib:FILE_POLICY.maxBytes/1024/1024}));
     if (
       !FILE_POLICY.extensions.includes(f.name.split(".").pop()!.toLowerCase())
     )
-      throw new Error(`${f.name}: 지원하지 않는 시연 파일 형식입니다.`);
+      throw new Error(renderMockTemplate(FILE_POLICY.messages.extension,{name:f.name}));
   }
 }
 const JOBS = "vibelation.mock.requirement-jobs.v1";
@@ -134,7 +123,7 @@ export const mockRequirementsService: RequirementsService = {
     if (!g) throw new Error("생성 작업을 찾을 수 없습니다.");
     if (g.status === "succeeded" || g.status === "failed") return g;
     const elapsed = Date.now() - Date.parse(g.createdAt);
-    if (elapsed < 900) return { ...g, status: "running" };
+    if (elapsed < localMockSettings.timing.requirementReadyMs) return { ...g, status: "running" };
     const s = g.inputSnapshot;
     const document: RequirementDocument = {
       id: crypto.randomUUID(),
@@ -148,11 +137,12 @@ export const mockRequirementsService: RequirementsService = {
       markdown: renderMockTemplate(requirementFixture.markdownTemplate, {
         generationNumber: g.generationNumber,
         title: s.title,
+        screenType: localMockSettings.screenTypes.find(item=>item.value===s.screenType)?.name || localMockSettings.requirementFallbacks.screenType,
         inputRevision: s.inputRevision,
-        text: s.text || "(미입력)",
-        html: s.html || "<!-- 미입력 -->",
+        text: s.text || localMockSettings.requirementFallbacks.text,
+        html: s.html || localMockSettings.requirementFallbacks.html,
         attachments:
-          s.attachmentNames.map((n) => "- " + n).join("\n") || "(없음)",
+          s.attachmentNames.map((n) => "- " + n).join("\n") || localMockSettings.requirementFallbacks.attachments,
       }),
     };
     const result = { ...g, status: "succeeded" as const, document };
@@ -171,112 +161,70 @@ export const mockRequirementsService: RequirementsService = {
     return result.sort((a, b) => b.generationNumber - a.generationNumber);
   },
 };
-export function createHttpRequirementsService(
-  baseUrl: string,
-): RequirementsService {
-  const base = baseUrl.replace(/\/$/, "");
-  async function request<T>(
-    path: string,
-    signal: AbortSignal,
-    init: RequestInit = {},
-  ): Promise<T> {
-    const response = await fetch(base + path, {
-      ...init,
-      signal,
-      credentials: "same-origin",
-    });
-    if (!response.ok) {
-      const error = await response
-        .json()
-        .catch(() => ({ message: `서버 오류 (${response.status})` }));
-      throw new Error(error.message || `서버 오류 (${response.status})`);
-    }
-    return response.status === 204 ? (undefined as T) : response.json();
+export function createHttpRequirementsService(baseUrl: string): RequirementsService {
+  const root=baseUrl.replace(/\/+$/, "");
+  const api = createBackendApi(new URL(root, "http://local").pathname === "/" ? root+"/api" : root);
+  const keyFor = (id:string) => `soetmul.md-job-input:${apiBase}:${id}`;
+  function jobFromWire(row:Wire,input:InputSnapshot,key=""):RequirementGeneration {
+    localStorage.setItem(keyFor(row.id),JSON.stringify({input,key}));
+    return {...row,inputSnapshot:input,idempotencyKey:key,error:typeof row.error === "string" ? row.error : row.error?.message} as RequirementGeneration;
   }
-  const route = (id: string) => `/api/requests/${encodeURIComponent(id)}`;
   return {
-    mode: "server",
-    async select(id, documentId, inputRevision, signal) {
-      await request(`${route(id)}/selected-requirement`, signal, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          documentId,
-          expectedInputRevision: inputRevision,
-        }),
+    mode:"server",
+    async select(id,documentId,inputRevision,signal) {
+      await withServerLock(id,async()=>{
+      const state=serverState(id);
+      const row=await api.patchRequest(id,{expectedRequestRevision:state.row.requestRevision,expectedInputRevision:state.row.inputRevision,workingRequirementDocumentId:documentId},signal);
+      localStorage.setItem(`soetmul.server-request:${apiBase}:${id}`,JSON.stringify({...state,row}));
+      localStorage.setItem(`soetmul.server-selection:${apiBase}:${id}`,JSON.stringify({id:documentId,inputRevision:row.inputRevision}));
       });
     },
-    upload(id, file, signal) {
-      const data = new FormData();
-      data.append("file", file);
-      return request(`${route(id)}/attachments`, signal, {
-        method: "POST",
-        body: data,
-      });
-    },
-    start(input, key, signal) {
-      return request(
-        `${route(input.requestId)}/requirement-generations`,
-        signal,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Idempotency-Key": key,
-          },
-          body: JSON.stringify(input),
-        },
-      );
-    },
-    async get(id, job, signal) {
-      const result = await request<
-        RequirementGeneration & { documentId?: string }
-      >(
-        `${route(id)}/requirement-generations/${encodeURIComponent(job)}`,
-        signal,
-      );
-      if (
-        result.status === "succeeded" &&
-        !result.document &&
-        result.documentId
-      ) {
-        result.document = await request<RequirementDocument>(
-          `${route(id)}/requirement-documents/${encodeURIComponent(result.documentId)}`,
-          signal,
-        );
+    async upload(id,file,signal) {
+      const policy=await api.attachmentPolicy(signal);
+      const ext=file.name.split(".").pop()!.toLowerCase();
+      if(!policy.allowedExtensions.includes(ext) || file.size>policy.maxFileBytes)throw new Error("서버의 첨부 형식·크기 정책을 확인해주세요.");
+      const op=operationKey(`upload:${id}:${file.name}:${file.size}:${file.lastModified}`);
+      let row=await api.uploadAttachment(id,file,op.key,signal);
+      for(let i=0; !row.usableForGeneration; i++) {
+        if(row.extractionStatus==="failed" || row.uploadStatus==="failed"){op.done();throw new Error(row.error?.message || "첨부 처리에 실패했습니다. 다시 업로드해주세요.");}
+        if(i>=600)throw new Error("첨부 처리가 진행 중입니다. 같은 파일로 재시도하면 상태를 다시 조회합니다.");
+        await waitForPoll(signal);row=await api.attachmentStatus(id,row.id,signal);
       }
-      if (result.status === "succeeded" && !result.document)
-        throw new Error(
-          "완료된 문서 응답을 확인할 수 없습니다. 작업 상태를 다시 확인해주세요.",
-        );
-      return result;
+      op.done();return {serverFileId:row.id,name:row.name,size:row.sizeBytes,type:row.contentType};
     },
-    async list(id, signal) {
-      let cursor: string | undefined;
-      const documents: RequirementDocument[] = [];
-      const seen = new Set<string>();
+    async start(input,key,signal) {
+      const ticket=`soetmul.md-ticket:${apiBase}:${input.requestId}:${key}`;
+      const stored=localStorage.getItem(ticket);
+      if(stored) return this.get(input.requestId,stored,signal);
+      const row=await syncInput(input,signal,undefined,api);
+      const job=await api.startRequirements(input.requestId,{inputSnapshotId:row.inputSnapshotId,expectedInputRevision:row.inputRevision},key,signal);
+      localStorage.setItem(ticket,job.id);
+      const result=jobFromWire(job,input,key);
+      return job.status==="succeeded" ? this.get(input.requestId,job.id,signal) : result;
+    },
+    async get(id,jobId,signal) {
+      const row=await api.requirementJob(id,jobId,signal);
+      const stored=localStorage.getItem(keyFor(jobId));
+      const context=stored ? JSON.parse(stored) : undefined;
+      let document:RequirementDocument|undefined;
+      if(row.status==="succeeded") {
+        const docId=row.documentId || row.result?.id;
+        document=documentFromWire(row.document || await api.requirementDocument(id,docId,signal),id,context?.input);
+      }
+      const input=context?.input || document?.inputSnapshot || {unavailable:true,requestId:id,inputRevision:row.basis?.inputRevision || 1,title:"",text:"",html:"",attachmentIds:[],attachmentNames:[]};
+      return {...jobFromWire(row,input,context?.key),document};
+    },
+    async list(id,signal) {
+      const result:RequirementDocument[]=[];let cursor:string|undefined;const seen=new Set<string>();
       do {
-        const page = await request<{
-          items: RequirementDocument[];
-          nextCursor?: string;
-        }>(
-          `${route(id)}/requirement-documents${cursor ? "?cursor=" + encodeURIComponent(cursor) : ""}`,
-          signal,
-        );
-        documents.push(...page.items);
-        cursor = page.nextCursor;
-        if (cursor && seen.has(cursor))
-          throw new Error("이력 페이지 응답이 반복되었습니다.");
-        if (cursor) seen.add(cursor);
-      } while (cursor);
-      return documents;
+        const page=await api.requirementDocuments(id,cursor,signal);
+        for(const row of page.items)result.push(documentFromWire(row.markdown===undefined ? await api.requirementDocument(id,row.id,signal):row,id));
+        cursor=page.nextCursor;if(cursor && seen.has(cursor))throw new Error("문서 페이지 응답이 반복됩니다.");if(cursor)seen.add(cursor);
+      }while(cursor);
+      return result;
     },
   };
 }
-const base = (import.meta as ImportMeta & { env?: Record<string, string> }).env
-  ?.VITE_REQUIREMENTS_API_URL;
-export const requirementsService = base
-  ? createHttpRequirementsService(base)
-  : mockRequirementsService;
+export const requirementsService = apiBase ? createHttpRequirementsService(apiBase) : mockRequirementsService;
 // File objects stay in memory only. On reload a pending upload must be reselected.
 export const pendingFiles = new Map<string, File>();

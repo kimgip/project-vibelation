@@ -1,4 +1,5 @@
-import { createMockHistoryService } from "../services/history";
+import { teamFixture } from "../mocks/fixtures";
+import { createHistoryService } from "../services/history";
 import { MarkdownPreview } from "../components/MarkdownPreview";
 import { Fragment, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
@@ -26,7 +27,7 @@ export function HistoryPage({ items, id }: { items: Registration[]; id?: string 
   const [retry, setRetry] = useState(0);
   useEffect(() => {
     const controller = new AbortController();
-    const service = createMockHistoryService(items);
+    const service = createHistoryService(items);
     setError("");
     setResult(null);
     const operation = id ? service.get(id, controller.signal).then(item => item ? [item] : []) : service.list(controller.signal).then(page => page.items);
@@ -231,39 +232,10 @@ function HistoryContent({
     </>
   );
 }
-const teamRows = [
-  {
-    id: "SR-2026-101",
-    title: "다운로드 센터 다중 선택 개선",
-    owner: "김운영",
-    status: "협의 중",
-    due: "2026-10-20",
-  },
-  {
-    id: "SR-2026-102",
-    title: "고객 문의 접수 데이터 추출",
-    owner: "박개발",
-    status: "검토 중",
-    due: "2026-10-16",
-  },
-  {
-    id: "SR-2026-103",
-    title: "자료 상세 안내 개선",
-    owner: "김운영",
-    status: "완료",
-    due: "2026-10-15",
-  },
-  {
-    id: "SR-2026-104",
-    title: "고객사 통합 검색조건 추가",
-    owner: "이개발",
-    status: "작업 중",
-    due: "2026-10-28",
-  },
-];
-const TEAM_BASE_DATE = "2026-10-17";
+const teamRows = teamFixture.items;
+const TEAM_BASE_DATE = teamFixture.referenceDate;
 type TeamRow = (typeof teamRows)[number];
-const isDone = (r: TeamRow) => r.status === "완료";
+const isDone = (r: TeamRow) => r.status === teamFixture.completedStatus;
 const isOverdue = (r: TeamRow) => r.due < TEAM_BASE_DATE && !isDone(r);
 const teamFilters = [
   { id: "all", label: "전체", match: () => true },
@@ -280,7 +252,7 @@ export function TeamPage({ history }: { history: Registration[] }) {
   const [reports, setReports] = useState<Registration[]>([]);
   useEffect(() => {
     const controller = new AbortController();
-    createMockHistoryService(history)
+    createHistoryService(history)
       .list(controller.signal)
       .then((page) => setReports(page.items))
       .catch(() => {});

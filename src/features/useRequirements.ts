@@ -1,3 +1,5 @@
+import { backendApi } from "../services/backendApi";
+import { syncRequest } from "../services/serverWorkspace";
 import { useEffect, useState } from "react";
 import {
   canGenerate,
@@ -65,6 +67,7 @@ export function useRequirements(
     const controller = new AbortController();
     const timer = setTimeout(async () => {
       try {
+        if(backendApi && pending.id.startsWith("pending:")) await syncRequest(r,controller.signal);
         const result = pending.id.startsWith("pending:")
           ? await requirementsService.start(
               pending.inputSnapshot,
@@ -130,7 +133,10 @@ export function useRequirements(
         !files.some((f) => f.name === a.name && a.uploadStatus !== "uploaded"),
     );
     try {
-      validateFiles(files, remaining.length);
+      if(backendApi) {
+        const p=await backendApi.attachmentPolicy(new AbortController().signal);
+        if(remaining.length+files.length>p.maxFilesPerRequest || files.some(f=>f.size>p.maxFileBytes || !p.allowedExtensions.includes(f.name.split(".").pop()!.toLowerCase())) || remaining.reduce((n,a)=>n+a.size,0)+files.reduce((n,f)=>n+f.size,0)>p.maxTotalBytesPerRequest)throw new Error("첨부파일이 서버 정책의 형식·개수·용량 한도를 초과했습니다.");
+      } else validateFiles(files, remaining.length);
     } catch (e) {
       setError(e instanceof Error ? e.message : "파일을 확인해주세요.");
       return;

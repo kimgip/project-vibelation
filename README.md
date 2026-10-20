@@ -42,23 +42,21 @@ npm run build
 
 ## 서버 연결과 Mock
 
-기본값은 서버 미연결 Mock입니다. 실제 AI 추출·첨부 내용 분석·이전 MD 종합은 수행하지 않습니다. 파일은 실제 File 객체로 어댑터에 전달되지만 Mock은 읽기·메타 응답만 시연합니다. BE 연결 시 `.env.example`을 참고하여 `VITE_REQUIREMENTS_API_URL`을 설정하고 서버를 다시 실행합니다.
+`.env.local`에 `VITE_API_URL=http://127.0.0.1:8000/api`를 설정하고 Vite를 다시 실행하면 서버 모드로 동작합니다. 미설정 시 기존 로컬 Mock을 사용합니다. 이전 환경변수는 호환 별칭이며 `VITE_API_URL`이 우선합니다. 서버 모드의 실패를 로컬 성공으로 대체하지 않습니다.
 
-`src/services/requirements.ts`의 HTTP 어댑터는 파일 multipart 업로드, 생성 POST와 Idempotency-Key, 작업 상태 조회, 문서 목록의 페이지 조회, 결과 문서 상세 조회, 적용 문서 PUT을 제공합니다. 서버는 아래 타입과 계약을 구현하고 요청 ID 생성/저장·인증·권한·CORS·파일 보존 정책을 맞춰야 합니다. 실제 BE 통합 테스트는 아직 수행하지 않았습니다. 요구사항 확정·선택적 시스템 Mock·Step 02~03은 로컬 시연 Mock입니다.
+현재 계약의 34개 API 호출을 `src/services/backendApi.ts`에 제공합니다. 요청 생성·목록·복원·입력 저장, 첨부 정책·업로드·처리 조회, MD 생성·이력·상세·선택, 선택적 화면 생성, MD 확정·이력, 분석, 리포트, 최종 등록·이력을 화면에 연결했습니다. MD 선택은 이전 PUT 대신 revision을 포함한 요청 PATCH를 사용합니다. Job의 결과 본문과 `{type,id}` 참조 응답을 지원하고 참조는 상세 API로 조회합니다.
 
-- 업로드 응답: `serverFileId, name, size, type`
-- 생성 시작/상태 응답: `RequirementGeneration` (id, idempotencyKey, generationNumber, status, inputSnapshot, createdAt, error?). 완료 시 `document` 또는 `documentId`를 반환합니다.
-- 목록 응답: `{ items: RequirementDocument[], nextCursor? }`
-- 문서 응답: `RequirementDocument` (id, generationId, generationNumber, inputRevision, inputSnapshot, markdown, createdAt, source, formatVersion)
-- 적용 요청: `{ documentId, expectedInputRevision }` → 200 JSON 또는 204
+서버가 발급한 요청·문서·확정 ID와 서버 revision을 사용합니다. 입력 저장은 변경 후 지연 저장하며 생성·선택·확정 전에 다시 동기화합니다. 동일 요청의 revision 쓰기는 순차 처리합니다. 생성/업로드/확정/등록의 멱등 키와 진행 작업 ID는 재시도에 유지합니다. 서버 모드 캐시는 API base별로 구분하며 기존 로컬 시연 자료를 자동 전송하지 않습니다. 충돌·인증·업로드 오류는 입력을 유지한 채 표시합니다. 명시적인 서버 재조회는 서버 저장 내용을 다시 불러옵니다.
 
-FE는 현재 입력 전체와 요청 ID를 전달합니다. 같은 요청의 이전 MD를 조회·종합하는 기능은 향후 BE 책임이며 FE가 기존 본문들을 합쳐 보내지 않습니다.
+인증 요청은 `credentials: include`로 전송합니다. 서버가 다른 출처이면 정확한 FE origin과 credential CORS를 허용해야 합니다. HTTPS 화면에서 HTTP 서버를 호출하면 브라우저가 차단할 수 있습니다. OIDC 로그인 화면과 운영 CSRF 정책은 서버 인증 계약 확정 후 연결해야 합니다.
 
-## 시스템 적용 동작 Mock
+## 시스템 적용 화면·레거시 코드
 
-`src/services/systemMocks.ts`는 사전 작성된 다운로드 센터 시연 HTML을 표시하기 위한 로컬 Mock입니다. 임의의 AI 생성 HTML/JavaScript를 앱 DOM이나 기존 정적 Preview에서 실행하지 않습니다. 샘플 데이터로 선택·검색·언어·10개 상한·성공/부분 누락/실패 안내를 시연합니다. 실제 레거시 분석·서버 AI 코드 생성·운영 API는 연결하지 않았습니다.
+브라우저 코드 ZIP 보관과 선택은 기존 IndexedDB 흐름을 유지합니다. 화면 생성·분석 요청에서 MD와 실제 코드 ZIP, 분류·크기·SHA-256 manifest를 함께 전송합니다. 서버 모드에서는 전송할 ZIP을 먼저 등록·적용하고 요청에서 선택해야 합니다. 반환된 HTML은 정적 격리 Preview로 표시하며 임의 서버 JavaScript를 앱 DOM에서 실행하지 않습니다.
 
-현재 시연 HTML은 외부 연결을 차단한 sandbox iframe에서 실행되며 표시한 HTML과 다운로드 파일은 동일합니다. 서버 AI가 생성한 임의 코드를 위한 검증·격리 런타임은 아직 미연결입니다. 기존 `VITE_REQUIREMENTS_API_URL`은 v0.8 요구사항 생성 어댑터용으로, 새 확정/영향도/등록 API 전체 연결을 의미하지 않습니다.
+서버 설정 시 레거시 설정 상단에 별도 서버 관리 화면을 제공합니다. SYS/SRC 6개 API로 시스템 생성·조회·초안 저장·적용, ZIP 업로드·교체·상태·구성 제외를 호출합니다. 시스템 목록 API가 없어 시스템 ID로 기존 초안을 불러옵니다. 적용은 revision, 제외는 If-Match를 보냅니다. 현재 Mock 백엔드가 501을 반환하는 경로는 미구현 오류로 표시합니다. 브라우저 코드 보관과 서버 관리의 성공 상태를 혼용하지 않습니다.
+
+서버 MD 응답에 생성 당시 inputSnapshot이 없으면 이 브라우저에 보관한 생성 입력을 복원합니다. 다른 브라우저에서 만든 문서는 당시 입력 자료를 조회할 수 없다고 표시합니다. 첨부 원본 다운로드 API는 현재 계약과 백엔드에 없어 추가하지 않았습니다. 서버의 DB·AI·원본 저장 구현 여부와 API 호출 성공은 별개입니다.
 
 ## 첨부·미리보기
 
@@ -73,7 +71,8 @@ HTML은 DOMPurify와 CSSOM으로 정리한 뒤 빈 sandbox iframe과 CSP로 격�
 - `src/features/SystemMockPanel.tsx`, `RequirementConfirmationPanel.tsx`: 선택적 동작 Mock·협의·확정
 - `src/services/systemMocks.ts`: 선택 Mock 생성·복원·서버 생성 어댑터
 - `src/services/requirements.ts`: RequirementsService·HTTP·Mock 어댑터
-- `src/services/contract.ts`: 후속 단계 시연 서비스
+- `src/services/contract.ts`: 분석 어댑터·로컬 시연 서비스
+- `src/services/backendApi.ts`, `serverWorkspace.ts`: 전체 API 클라이언트·서버 응답 매핑·확정·리포트·등록
 - `src/storage/repositories.ts`: 스키마 검증·이전 자료 마이그레이션·등록 스냅샷
 - `src/utils/htmlPreview.ts`: HTML/CSS 정적 표시 정리
 - `tests/`: 버전/문서 선택·지연 응답·복구·멱등성·업로드/API 계약 테스트
@@ -104,3 +103,10 @@ HTML은 DOMPurify와 CSSOM으로 정리한 뒤 빈 sandbox iframe과 CSP로 격�
 `npm test`는 도메인·HTTP 계약 회귀 검증입니다. 브라우저 검증은 `node tests/browser-workflow.mjs`, 서버 응답 대역 검증은 `node tests/browser-generation.mjs`로 실행합니다. Playwright와 Chrome이 필요하며, 번들 런타임 사용 시 `PLAYWRIGHT_MODULE`에 Playwright 패키지 경로를 지정합니다. 두 스크립트는 임시 로컬 Vite 서버와 격리된 브라우저를 사용합니다. 서버 응답은 테스트에서 대체하며 실제 BE 통합 성공을 뜻하지 않습니다. 스크린샷은 Git 제외된 `test-results/`에 저장합니다.
 
 요구사항 문서 이력의 vN을 선택하면 같은 번호의 입력 자료에서 생성 당시 텍스트·HTML 코드/정적 미리보기·첨부 목록을 조회합니다. 열람은 현재 입력과 협의 기준을 바꾸지 않습니다. 버전별 원문 보존 검증은 `node tests/browser-documentVersions.mjs`로 실행합니다.
+
+
+## 최신 디자인 재통합 (ebcc983)
+
+새 단계 버튼, MD 협의 기준의 4초 알림/되돌리기, 미리보기 생략, 이력 카드와 팀 현황 필터·상세 펼침을 유지하며 API 모드를 연결했습니다. MD 최초 선택 취소도 workingRequirementDocumentId:null PATCH로 서버에 반영합니다. 화면 종류(new/modify)는 입력 스냅샷과 로컬 MD에 보존하며 변경 시 재확정을 요구합니다. 서버에는 input.screenType을 전송하지만 현재 Mock 백엔드 스키마가 이 필드를 저장하지 않으므로 서버 측 필드 추가가 필요합니다. 이전 브라우저의 선택 값은 로컬 복원 정보로 보존하며 다른 기기 복원을 보장하지 않습니다.
+
+샘플 MD는 최신 디자인의 vN 제목과 화면 종류를 담는 requirement-mock-v4 양식입니다. 팀·이력 샘플은 최신 브랜치와 내용이 같아 유지하고 데이터 참조만 JSON으로 분리했습니다. 팀 현황의 실제 서버 API는 아직 없으므로 팀 목록은 계속 샘플이며, 검토 이력 조회는 환경 설정에 따라 서버/로컬 서비스를 사용합니다.

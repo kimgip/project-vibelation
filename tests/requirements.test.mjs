@@ -5,10 +5,12 @@ import {
   createHttpRequirementsService,
   validateFiles,
 } from "../src/services/requirements.ts";
+import { rememberServerRequest } from "../src/services/serverWorkspace.ts";
 const values = new Map();
 globalThis.localStorage = {
   getItem: (k) => values.get(k) || null,
   setItem: (k, v) => values.set(k, v),
+  removeItem: k => values.delete(k),
 };
 const input = {
   requestId: "req",
@@ -54,13 +56,15 @@ test("upload accepts File bytes and HTTP sends multipart file rather than metada
   const original = globalThis.fetch;
   let received;
   globalThis.fetch = async (url, options) => {
+    if(url.endsWith("/attachment-policy"))return Response.json({allowedExtensions:["txt"],maxFileBytes:100});
     received = { url, options };
     return new Response(
       JSON.stringify({
-        serverFileId: "file-1",
+        id: "file-1",
+        usableForGeneration: true,
         name: file.name,
-        size: file.size,
-        type: file.type,
+        sizeBytes: file.size,
+        contentType: file.type,
       }),
       { status: 200 },
     );
@@ -76,57 +80,37 @@ test("upload accepts File bytes and HTTP sends multipart file rather than metada
       await received.options.body.get("file").text(),
       "actual content",
     );
-    assert.equal(received.options.headers, undefined);
+    assert.ok(received.options.headers["Idempotency-Key"]);
+    assert.equal(received.options.headers["Content-Type"],undefined);
   } finally {
     globalThis.fetch = original;
   }
   assert.throws(() => validateFiles([new File(["a"], "bad.exe")], 0));
 });
-test("HTTP generation sends full current input with an idempotency key and hydrates result IDs", async () => {
-  const original = globalThis.fetch,
-    calls = [];
-  const signal = new AbortController().signal;
-  const job = {
-    id: "job-1",
-    idempotencyKey: "same-key",
-    generationNumber: 1,
-    status: "succeeded",
-    inputSnapshot: input,
-    createdAt: "2026-10-17T00:00:00Z",
-    documentId: "doc-1",
+test("HTTP generation saves current input, starts from server snapshot and selects with revisions", async () => {
+  values.clear();
+  rememberServerRequest({id:"req",requestRevision:1,inputRevision:1,inputSnapshotId:"old"});
+  const original=globalThis.fetch,calls=[],signal=new AbortController().signal;
+  const doc={id:"doc-1",generationId:"job-1",generationNumber:1,inputRevision:2,markdown:"# 요구사항",createdAt:"2026-10-18T00:00:00Z",formatVersion:"v1"};
+  globalThis.fetch=async(url,init)=>{
+    calls.push({url,init});
+    if(init.method==="PATCH")return Response.json({id:"req",requestRevision:2,inputRevision:2,inputSnapshotId:"snapshot-2"});
+    if(url.endsWith("/requirement-documents/doc-1"))return Response.json(doc);
+    return Response.json({id:"job-1",generationNumber:1,status:"succeeded",result:{type:"requirementDocument",id:"doc-1"},createdAt:doc.createdAt});
   };
-  const doc = {
-    id: "doc-1",
-    generationId: "job-1",
-    generationNumber: 1,
-    inputRevision: 1,
-    inputSnapshot: input,
-    markdown: "# 요구사항",
-    createdAt: job.createdAt,
-    source: "server",
-    formatVersion: "v1",
-  };
-  globalThis.fetch = async (url, init) => {
-    calls.push({ url, init });
-    if (url.endsWith("/selected-requirement"))
-      return new Response(null, { status: 204 });
-    return new Response(
-      JSON.stringify(url.endsWith("/requirement-documents/doc-1") ? doc : job),
-      { status: 200 },
-    );
-  };
-  try {
-    const api = createHttpRequirementsService("https://backend.example");
-    await api.start(input, "same-key", signal);
-    assert.deepEqual(JSON.parse(calls[0].init.body), input);
-    assert.equal(calls[0].init.headers["Idempotency-Key"], "same-key");
-    assert.equal((await api.get("req", "job-1", signal)).document.id, "doc-1");
-    await api.select("req", "doc-1", 1, signal);
-    assert.deepEqual(JSON.parse(calls.at(-1).init.body), {
-      documentId: "doc-1",
-      expectedInputRevision: 1,
-    });
-  } finally {
-    globalThis.fetch = original;
-  }
+  try{
+    const api=createHttpRequirementsService("https://backend.example/api");
+    await api.start(input,"same-key",signal);
+    assert.equal(calls[0].url,"https://backend.example/api/requests/req");
+    assert.equal(JSON.parse(calls[0].init.body).input.text,input.text);
+    assert.deepEqual(JSON.parse(calls[1].init.body),{inputSnapshotId:"snapshot-2",expectedInputRevision:2});
+    assert.equal(calls[1].init.headers["Idempotency-Key"],"same-key");
+    const completed=await api.get("req","job-1",signal);
+    assert.equal(completed.document.id,"doc-1");
+    assert.deepEqual(completed.document.inputSnapshot,input);
+    await api.select("req","doc-1",1,signal);
+    assert.deepEqual(JSON.parse(calls.at(-1).init.body),{expectedRequestRevision:2,expectedInputRevision:2,workingRequirementDocumentId:"doc-1"});
+    await api.select("req",null,1,signal);
+    assert.equal(JSON.parse(calls.at(-1).init.body).workingRequirementDocumentId,null);
+  }finally{globalThis.fetch=original;}
 });

@@ -1,3 +1,4 @@
+import { backendApi } from "../services/backendApi";
 import { useState } from "react";
 import {
   activeConfirmation,
@@ -91,7 +92,7 @@ export function ReviewPage({
                 {analysis?.source === "server"
                   ? "서버 분석 결과 기준"
                   : "실제 수행 실적·인력 달력 미연결 · 시연 산정"}{" "}
-                · 리포트 문서 생성과 이력 등록은 로컬 시연입니다.
+                · {backendApi ? "리포트 생성과 이력 등록은 서버 API를 사용합니다." : "리포트 문서 생성과 이력 등록은 로컬 시연입니다."}
               </small>
             </section>
           </>

@@ -1,3 +1,5 @@
+import { localMockSettings } from "../mocks/fixtures";
+import { backendApi } from "../services/backendApi";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import type { LegacyReference } from "../domain/legacySources";
@@ -9,10 +11,6 @@ import {
 } from "../components/WorkflowShell";
 import type { WorkspaceProps } from "./workspace";
 
-const screenTypes = [
-  ["new", "신규", "레거시 스타일로 새 화면"],
-  ["modify", "수정", "기존 화면에 추가"],
-] as const;
 function LegacyCheck({ checked }: { checked: boolean }) {
   return (
     <span
@@ -32,10 +30,12 @@ function LegacyCheck({ checked }: { checked: boolean }) {
 }
 
 export function LegacyPicker({ r, edit, go, saved }: WorkspaceProps) {
+  const [serverReferences,setServerReferences]=useState<{id:string;systemName:string;version:string}[]>([]);
   const [references, setReferences] = useState<LegacyReference[]>([]),
     [error, setError] = useState("");
   useEffect(() => {
     let cancelled = false;
+    if(backendApi)void backendApi.listLegacyReferences().then(page=>{if(!cancelled)setServerReferences(page.items);}).catch(e=>{if(!cancelled)setError(e.message);});
     void legacyRepository
       .references()
       .then((rows) => {
@@ -66,16 +66,17 @@ export function LegacyPicker({ r, edit, go, saved }: WorkspaceProps) {
       )}
       <div className="legacy-reference-list">
         <button
-          className={r.legacyVersion === "DEMO-2026.10" ? "selected" : ""}
-          aria-pressed={r.legacyVersion === "DEMO-2026.10"}
-          onClick={() => edit({ legacyVersion: "DEMO-2026.10" })}
+          className={r.legacyVersion === localMockSettings.legacy.version ? "selected" : ""}
+          aria-pressed={r.legacyVersion === localMockSettings.legacy.version}
+          onClick={() => edit({ legacyVersion: localMockSettings.legacy.version })}
         >
           <span>
-            <b>다운로드 센터 · 시연용 틀</b>
-            <small>실제 코드 ZIP 없이 로컬 시연합니다.</small>
+            <b>{localMockSettings.legacy.name}</b>
+            <small>{localMockSettings.legacy.description}</small>
           </span>
-          <LegacyCheck checked={r.legacyVersion === "DEMO-2026.10"} />
+          <LegacyCheck checked={r.legacyVersion === localMockSettings.legacy.version} />
         </button>
+        {serverReferences.map(ref=><div key={ref.id} className="workflow-info"><b>{ref.systemName}</b> · {ref.version}<small>서버 코드 기준 · ZIP 동시 전송은 아래 브라우저 보관 기준을 선택해주세요.</small></div>)}
         {references
           .slice()
           .reverse()
@@ -109,12 +110,12 @@ export function LegacyPicker({ r, edit, go, saved }: WorkspaceProps) {
       </div>
       <h2 className="legacy-request-label">② 화면 종류</h2>
       <div className="screen-type-options">
-        {screenTypes.map(([value, name, detail]) => (
+        {localMockSettings.screenTypes.map(({value, name, detail}) => (
           <button
             key={value}
             className={r.screenType === value ? "selected" : ""}
             aria-pressed={r.screenType === value}
-            onClick={() => edit({ screenType: value })}
+            onClick={() => edit({ screenType: value as "new" | "modify" })}
           >
             <span>{name}</span>
             <small>{detail}</small>

@@ -1,3 +1,5 @@
+import { backendApi } from "../services/backendApi";
+import { syncRequest } from "../services/serverWorkspace";
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import {
@@ -68,24 +70,27 @@ export function InputPage(props: WorkspaceProps) {
   // The current 협의 기준, only while it still matches the current input.
   const base = hasAppliedRequirement(r) ? appliedDocument(r) : undefined;
   async function undoSelection() {
-    if (!toast) return;
+    if (!toast || applying || !saved) return;
+    setApplying(true);
     const { previous, appliedRevision } = toast;
     setToast(undefined);
     setApplyError("");
     try {
-      if (previous.selectedRequirementDocumentId)
-        await requirementsService.select(
+      await requirementsService.select(
           r.id,
-          previous.selectedRequirementDocumentId,
+          previous.selectedRequirementDocumentId || null,
           r.inputRevision,
           new AbortController().signal,
         );
-      update((latest) => restoreSelection(latest, previous, appliedRevision));
+      update((latest) => {
+        if(latest.inputRevision!==r.inputRevision || latest.revision!==r.revision)throw new Error("되돌리는 중 입력이 변경되었습니다. 기준을 다시 선택해주세요.");
+        return restoreSelection(latest, previous, appliedRevision);
+      });
     } catch (e) {
       setApplyError(
         e instanceof Error ? e.message : "이전 기준으로 되돌리지 못했습니다.",
       );
-    }
+    } finally {setApplying(false);}
   }
   async function selectDocument() {
     if (!doc || applying || !saved) return;
@@ -94,6 +99,7 @@ export function InputPage(props: WorkspaceProps) {
     setApplying(true);
     setApplyError("");
     try {
+      if(backendApi) await syncRequest(r,controller.signal);
       await requirementsService.select(
         r.id,
         doc.id,

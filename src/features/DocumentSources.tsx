@@ -28,6 +28,7 @@ export function DocumentSources({ doc }: { doc: RequirementDocument }) {
         요구사항 v{doc.generationNumber}.md 생성에 사용된 내용으로, 현재 편집
         중인 자료와 별도로 보관됩니다.
       </p>
+      {snapshot.unavailable && <p role="status">서버 응답에 생성 당시 입력 자료가 없어 원본 내용을 복원할 수 없습니다.</p>}
       <UnderlineTabs
         className="document-sources-tabs"
         tabs={tabs.map(([id, label, count]) => ({

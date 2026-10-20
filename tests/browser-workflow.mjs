@@ -24,7 +24,7 @@ try {
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto(base);
-  await page.getByRole("button", { name: "시작하기 >", exact: true }).click();
+  await page.getByRole("button", { name: "시작하기 ›", exact: true }).click();
   const titleInput = page.getByLabel("요청 제목", { exact: true });
   await titleInput.pressSequentially("다운로드 센터 검토");
   assert.equal(await titleInput.isVisible(), true);
@@ -43,7 +43,7 @@ try {
     { title: "", dueDate: "" },
     "typing must not save",
   );
-  const dateInput = page.getByLabel("희망 완료일", { exact: true });
+  const dateInput = page.getByLabel(/희망 완료일/);
   await dateInput.fill("2026-10-31");
   assert.deepEqual(await storedDetails(), { title: "", dueDate: "" });
   await page
@@ -64,25 +64,25 @@ try {
   await page.getByRole("button", { name: "취소", exact: true }).click();
   assert.equal(await titleInput.inputValue(), "다운로드 센터 검토");
   await page.screenshot({ path: "test-results/01-legacy.png", fullPage: true });
-  await page.getByRole("button", { name: "다음 >", exact: true }).click();
+  await page.getByRole("button", { name: "쇳물 녹이기 ›", exact: true }).click();
   await page.getByRole("button", { name: "샘플 불러오기" }).click();
   await page
-    .getByRole("button", { name: "요구사항 정리하기 >", exact: true })
+    .getByRole("button", { name: "성분 보기 ›", exact: true })
     .click();
   await page
     .getByRole("heading", { name: "[쇳물 성분 보기]", exact: true })
     .waitFor();
   await page
-    .getByRole("button", { name: "이 문서로 협의하기", exact: true })
+    .getByRole("button", { name: "기준으로 정하기", exact: true })
     .click();
-  await page.getByText("현재 협의 기준", { exact: true }).waitFor();
+  await page.getByText("✓ 협의 기준", { exact: true }).first().waitFor();
   await page.screenshot({
     path: "test-results/02-requirements.png",
     fullPage: true,
   });
   await page
     .getByRole("button", {
-      name: "Mock 없이 요구사항 확정 후 분석하기",
+      name: "탕도 살피기로 건너뛰기 ›",
       exact: true,
     })
     .click();
@@ -93,12 +93,12 @@ try {
     fullPage: true,
   });
   await page
-    .getByRole("button", { name: "최종 리포트 생성하기 >", exact: true })
+    .getByRole("button", { name: "붓기 준비 완료 ›", exact: true })
     .click();
   await page
     .getByRole("heading", { name: "[붓기 준비 완료]", exact: true })
     .waitFor();
-  for (const tab of ["영향 자원", "유사사례", "리포트 원문", "검토 요약"])
+  for (const tab of ["영향 범위", "유사사례", "리포트 원문", "검토 요약"])
     await page.getByRole("tab", { name: tab, exact: true }).click();
   await page
     .getByLabel("합의 범위와 제외 범위를 확인했습니다.", { exact: true })
@@ -110,7 +110,7 @@ try {
     .check();
   await page.screenshot({ path: "test-results/04-review.png", fullPage: true });
   await page
-    .getByRole("button", { name: "검토 이력에 등록하기", exact: true })
+    .getByRole("button", { name: "이력에 등록", exact: true })
     .click();
   await page.waitForURL(/#\/history\//);
   await page.goto(base + "#/settings/legacy");
@@ -213,24 +213,24 @@ try {
     "settings mobile overflow",
   );
   await page.goto(base);
-  await page.getByRole("button", { name: "시작하기 >", exact: true }).click();
+  await page.getByRole("button", { name: "시작하기 ›", exact: true }).click();
   await page
     .getByRole("button", { name: /코드 ZIP 테스트/ })
     .first()
     .click();
-  await page.getByRole("button", { name: "다음 >", exact: true }).click();
+  await page.getByRole("button", { name: "쇳물 녹이기 ›", exact: true }).click();
   await page.getByRole("button", { name: "샘플 불러오기" }).click();
   await page
-    .getByRole("button", { name: "요구사항 정리하기 >", exact: true })
+    .getByRole("button", { name: "성분 보기 ›", exact: true })
     .click();
   await page
     .getByRole("heading", { name: "[쇳물 성분 보기]", exact: true })
     .waitFor();
   await page
-    .getByRole("button", { name: "이 문서로 협의하기", exact: true })
+    .getByRole("button", { name: "기준으로 정하기", exact: true })
     .click();
   await page
-    .getByRole("button", { name: "레거시에 맞춰 Mock 만들기 >", exact: true })
+    .getByRole("button", { name: "미리 붓기 ›", exact: true })
     .click();
   await page
     .getByRole("button", { name: "시스템 적용 Mock 생성", exact: true })

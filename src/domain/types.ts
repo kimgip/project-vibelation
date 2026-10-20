@@ -1,3 +1,4 @@
+import localMockSettings from "../mocks/local-settings.json" with { type: "json" };
 import { validDueDate } from "./requestDetails";
 export type ResourceType = "UI" | "Logic" | "API" | "DB" | "Permission";
 export interface Basis {
@@ -43,6 +44,8 @@ export interface Attachment {
   error?: string;
 }
 export interface InputSnapshot {
+  screenType?: "new" | "modify";
+  unavailable?: boolean;
   requestId: string;
   inputRevision: number;
   title: string;
@@ -170,7 +173,7 @@ export function blankRequest(): WorkRequest {
     dueDate: "",
     revision: 1,
     inputRevision: 1,
-    legacyVersion: "DEMO-2026.10",
+    legacyVersion: localMockSettings.legacy.version,
     agreement: "",
     opinion: "",
     attachments: [],
@@ -204,7 +207,7 @@ export function editRequest(
   patch: Partial<WorkRequest>,
 ): WorkRequest {
   if (patch.dueDate !== undefined && !validDueDate(patch.dueDate)) throw new Error("희망 완료일은 4자리 연도의 유효한 날짜로 입력해주세요.");
-  const inputChanged = ["title", "text", "html", "attachments", "dueDate"].some(
+  const inputChanged = ["title", "text", "html", "attachments", "dueDate", "screenType"].some(
     (k) => k in patch,
   );
   const next = {
@@ -298,6 +301,7 @@ export function snapshotOf(r: WorkRequest): InputSnapshot {
     title: r.title,
     text: r.text,
     html: r.html,
+    screenType: r.screenType,
     attachmentIds: r.attachments.map((a) => a.serverFileId!),
     attachmentNames: r.attachments.map((a) => a.name),
   };

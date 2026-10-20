@@ -17,9 +17,9 @@ try {
     errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto(base);
-  await page.getByRole("button", { name: "시작하기 >", exact: true }).click();
+  await page.getByRole("button", { name: "시작하기 ›", exact: true }).click();
   await page.getByLabel("요청 제목", { exact: true }).fill("문서 버전별 자료");
-  await page.getByRole("button", { name: "다음 >", exact: true }).click();
+  await page.getByRole("button", { name: "쇳물 녹이기 ›", exact: true }).click();
   await page
     .getByLabel("Teams 대화", { exact: true })
     .fill("첫 번째 요청 원문");
@@ -42,7 +42,7 @@ try {
     });
   await page.getByText("전송 처리 완료", { exact: false }).waitFor();
   await page
-    .getByRole("button", { name: "요구사항 정리하기 >", exact: true })
+    .getByRole("button", { name: "성분 보기 ›", exact: true })
     .click();
   const first = page.getByRole("region", { name: "입력 자료 v1", exact: true });
   await first.waitFor();
@@ -51,7 +51,7 @@ try {
     "첫 번째 요청 원문",
   );
   await page
-    .getByRole("button", { name: "< 자료 추가/수정하기", exact: true })
+    .getByRole("button", { name: "‹ 쇳물 녹이기", exact: true })
     .click();
   await page
     .getByLabel("Teams 대화", { exact: true })
@@ -71,7 +71,7 @@ try {
     });
   await page.getByText("전송 처리 완료", { exact: false }).waitFor();
   await page
-    .getByRole("button", { name: "요구사항 정리하기 >", exact: true })
+    .getByRole("button", { name: "성분 보기 ›", exact: true })
     .click();
   const second = page.getByRole("region", {
     name: "입력 자료 v2",
@@ -82,32 +82,32 @@ try {
     await second.getByLabel("생성 당시 텍스트", { exact: true }).inputValue(),
     "두 번째 수정 원문",
   );
-  await page.getByText("문서 이력 ·", { exact: false }).click();
+  await page.getByText("요구사항 MD 이력 ·", { exact: false }).click();
   await page
-    .getByRole("button", { name: /요구사항 v1 · 입력 자료 v1/ })
+    .getByRole("button", { name: /요구사항 v1/ })
     .click();
   await first.waitFor();
   assert.equal(
     await first.getByLabel("생성 당시 텍스트", { exact: true }).inputValue(),
     "첫 번째 요청 원문",
   );
-  await first.getByRole("button", { name: "HTML 코드", exact: true }).click();
+  await first.getByRole("tab", { name: "HTML 코드", exact: true }).click();
   assert.equal(
     await first.getByLabel("생성 당시 HTML 코드", { exact: true }).inputValue(),
     "<h1>첫 번째 화면</h1>",
   );
   await first
-    .getByRole("button", { name: "첨부파일 (1)", exact: true })
+    .getByRole("tab", { name: "첨부파일 (1)", exact: true })
     .click();
   assert.equal(await first.getByText("first.txt", { exact: true }).count(), 1);
   assert.equal(await first.getByText("second.txt", { exact: true }).count(), 0);
   assert.equal(
-    await page.getByText("현재 협의 기준", { exact: true }).count(),
+    await page.getByText("✓ 협의 기준", { exact: true }).first().count(),
     0,
     "viewing must not apply MD",
   );
   await page
-    .getByRole("button", { name: "< 자료 추가/수정하기", exact: true })
+    .getByRole("button", { name: "‹ 쇳물 녹이기", exact: true })
     .click();
   assert.equal(
     await page.getByLabel("Teams 대화", { exact: true }).inputValue(),

@@ -1,3 +1,5 @@
+import { backendApi, apiBase } from "../services/backendApi";
+import { createServerRequest, serverRequests, confirmServerRequest, serverReport, registerServerRequest, syncRequest, serverState } from "../services/serverWorkspace";
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
@@ -18,11 +20,12 @@ import {
 import { sourcesForVersion } from "../storage/legacySources";
 import type { WorkspaceProps } from "./workspace";
 import type { Material } from "./Landing";
+const dirtyKey=(id:string)=>`soetmul.server-dirty:${apiBase}:${id}`;
 function load() {
   try {
     return {
       requests: repository.requests(),
-      history: repository.history(),
+      history: backendApi ? [] : repository.history(),
       error: "",
     };
   } catch (e) {
@@ -41,6 +44,7 @@ export function useWorkspace() {
     [storageBlocked, setStorageBlocked] = useState(!!initial.error),
     [saved, setSaved] = useState(true),
     [busy, setBusy] = useState("");
+  const [serverLoaded,setServerLoaded]=useState(!backendApi);
   const location = useLocation(),
     navigate = useNavigate();
   const parts = location.pathname.split("/");
@@ -108,7 +112,7 @@ export function useWorkspace() {
     }
     try {
       repository.saveRequest(next);
-      setSaved(true);
+      setSaved(backendApi ? !localStorage.getItem(dirtyKey(next.id)) : true);
       return true;
     } catch (e) {
       setSaved(false);
@@ -125,9 +129,10 @@ export function useWorkspace() {
     active.current?.controller.abort();
     active.current = null;
     setBusy("");
+    if(backendApi)localStorage.setItem(dirtyKey(r.id),"1");
     return commit(editRequest(r, patch));
   };
-  const create = (materials: Material[] = []) => {
+  const create = async (materials: Material[] = []) => {
     if (storageBlocked) {
       setMessage("저장 자료 충돌 또는 손상을 먼저 해결해주세요.");
       return;
@@ -137,7 +142,11 @@ export function useWorkspace() {
       !window.confirm("미저장 변경사항이 있습니다. 새 요청으로 이동할까요?")
     )
       return;
-    const next = blankRequest();
+    if(active.current) return;
+    const controller=new AbortController(),token=++serial.current;
+    active.current={id:token,controller};setBusy("create");
+    try {
+    const next = backendApi ? await createServerRequest(controller.signal) : blankRequest();
     commit(next);
     navigate(`/requests/${next.id}/input?view=legacy`, {
       state: {
@@ -145,6 +154,8 @@ export function useWorkspace() {
         initialMaterial: materials[0] || "text",
       },
     });
+    } catch(e) {setMessage(e instanceof Error ? e.message : "요청 생성 실패");}
+    finally {if(active.current?.id===token){active.current=null;setBusy("");}}
   };
   useEffect(() => {
     if (location.pathname !== "/requests/new") {
@@ -197,11 +208,12 @@ export function useWorkspace() {
               ),
               controller.signal,
             )
-          : await mockService[kind](snapshot, controller.signal);
+          : backendApi ? await serverReport(snapshot, controller.signal) : await mockService[kind](snapshot, controller.signal);
       const current = requestsRef.current.find((x) => x.id === snapshot.id);
       if (
         active.current?.id !== token ||
         !current ||
+        current.revision !== snapshot.revision ||
         !sameBasis(basisOf(current), result.basis)
       )
         return;
@@ -227,11 +239,13 @@ export function useWorkspace() {
       }
     }
   }
-  const register = () => {
+  const register = async () => {
     if (!r || busy || !saved || storageBlocked) return;
+    setBusy("register");
     try {
-      const result = repository.register(r);
-      setHistory(repository.history());
+      if(backendApi) await syncRequest(r,new AbortController().signal);
+      const result = backendApi ? await registerServerRequest(r,new AbortController().signal) : repository.register(r);
+      setHistory(backendApi ? [result,...history.filter(x=>x.id!==result.id)] : repository.history());
       navigate(`/history/${result.id}`);
     } catch (e) {
       setMessage(
@@ -240,8 +254,20 @@ export function useWorkspace() {
           : "등록에 실패했습니다. 입력을 보존했습니다.",
       );
     }
+    finally {setBusy("");}
   };
-  const reload = () => {
+  const retrySave=async()=>{
+    if(!r)return;
+    if(!backendApi){commit(r);return;}
+    try{await syncRequest(r,new AbortController().signal);localStorage.removeItem(dirtyKey(r.id));setSaved(true);setMessage("서버 입력을 저장했습니다.");}
+    catch(e){setSaved(false);setMessage(e instanceof Error?e.message:"서버 저장 실패");}
+  };
+  const reload = async () => {
+    if(backendApi && !saved && !window.confirm("미저장 입력을 서버에 저장된 내용으로 바꿀까요? 필요하면 먼저 복구용 내보내기를 해주세요."))return;
+    if(backendApi){
+      try {const rows=await serverRequests(new AbortController().signal);requestsRef.current=rows;setRequests(rows);rows.forEach(row=>localStorage.removeItem(dirtyKey(row.id)));setStorageBlocked(false);setSaved(true);setServerLoaded(true);setMessage("서버 요청을 다시 불러왔습니다.");}
+      catch(e){setMessage(e instanceof Error ? e.message : "서버 조회 실패");}return;
+    }
     if (
       !saved &&
       !window.confirm("메모리의 변경사항 대신 저장 자료를 다시 불러올까요?")
@@ -281,13 +307,15 @@ export function useWorkspace() {
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
-  const confirmAndAnalyze = (options: { skipPreview?: boolean } = {}) => {
+  const confirmAndAnalyze = async (options: { skipPreview?: boolean } = {}) => {
     if (!r || !saved || storageBlocked || active.current) return;
     try {
       const latest = requestsRef.current.find((x) => x.id === r.id)!;
-      const confirmed = options.skipPreview
-        ? { ...confirmRequirement(latest), previewSkipped: true }
-        : confirmRequirement(latest);
+      setBusy("confirm");
+      const result = backendApi ? await confirmServerRequest(latest,new AbortController().signal) : confirmRequirement(latest);
+      const confirmed=options.skipPreview ? {...result,previewSkipped:true} : result;
+      const current=requestsRef.current.find(x=>x.id===latest.id);
+      if(!current || current.revision!==latest.revision)throw new Error("확정 중 입력이 변경되었습니다. 다시 확인해주세요.");
       if (!commit(confirmed)) return;
       navigate(`/requests/${r.id}/analysis`, { state: location.state });
       void run("analysis", confirmed);
@@ -298,7 +326,43 @@ export function useWorkspace() {
           : "요구사항 확정에 실패했습니다.",
       );
     }
+    finally {setBusy(current=>current==="confirm"?"":current);}
   };
+  useEffect(()=>{
+    if(!backendApi) return;
+    const controller=new AbortController();
+    const revisions=new Map(requestsRef.current.map(item=>{try{return [item.id,serverState(item.id).row.requestRevision] as const;}catch{return [item.id,undefined] as const;}}));
+    void serverRequests(controller.signal).then(rows=>{
+      if(controller.signal.aborted)return;
+      let conflict=false;
+      const merged=rows.map(row=>{
+        const local=requestsRef.current.find(x=>x.id===row.id);
+        if(local && localStorage.getItem(dirtyKey(row.id))){
+          if(revisions.get(row.id)!==serverState(row.id).row.requestRevision)conflict=true;
+          return local;
+        }
+        return row;
+      });
+      requestsRef.current=merged;setRequests(merged);setServerLoaded(true);
+      if(conflict){storageBlockedRef.current=true;setStorageBlocked(true);setSaved(false);setMessage("서버 변경과 이 브라우저의 미저장 입력이 충돌합니다. 입력을 백업하고 서버 자료를 다시 불러와주세요.");}
+    }).catch(e=>{if(!controller.signal.aborted)setMessage(e instanceof Error?e.message:"서버 요청 조회 실패");});
+    return ()=>controller.abort();
+  },[]);
+  useEffect(()=>{
+    if(!backendApi || !serverLoaded || !r || storageBlocked || !localStorage.getItem(dirtyKey(r.id)) || r.attachments.some(a=>a.uploadStatus!=="uploaded"))return;
+    const snapshot=structuredClone(r);
+    setSaved(false);
+    const timer=setTimeout(()=>{
+      // syncRequest serializes revision-sensitive writes with generation and confirmation.
+      void syncRequest(snapshot,new AbortController().signal).then(()=>{
+        const current=requestsRef.current.find(x=>x.id===snapshot.id);
+        if(current?.inputRevision===snapshot.inputRevision && current.legacyVersion===snapshot.legacyVersion){localStorage.removeItem(dirtyKey(snapshot.id));setSaved(true);}
+      }).catch(e=>{
+        setMessage(e instanceof Error?e.message:"서버 입력 저장 실패");
+      });
+    },600);
+    return ()=>clearTimeout(timer);
+  },[r?.id,r?.inputRevision,r?.legacyVersion,r?.attachments,storageBlocked,serverLoaded]);
   const props: WorkspaceProps | undefined = r
     ? {
         r,
@@ -337,6 +401,7 @@ export function useWorkspace() {
     create,
     commit,
     reload,
+    retrySave,
     backup,
     props,
   };

@@ -28,6 +28,12 @@ export function App() {
             </button>
           </div>
         )}
+        {(w.storageBlocked || (!w.saved && !!w.message)) && <div className="stale-warning" role="alert">
+          <span>{w.storageBlocked ? "저장 충돌·손상 확인 필요" : "변경사항 미저장"}</span>
+          {!w.storageBlocked && w.r && <button onClick={()=>void w.retrySave()}>저장 재시도</button>}
+          <button onClick={()=>void w.reload()}>저장 자료 다시 불러오기</button>
+          <button onClick={w.backup}>복구용 내보내기</button>
+        </div>}
         {landing ? (
           <Landing start={w.create} requests={w.requests} />
         ) : w.location.pathname.startsWith("/settings/legacy") ? (
