@@ -35,6 +35,14 @@ test("generation idempotency, repeat generation and reload recovery", async () =
   assert.match(a.document.markdown, /^# \[요구사항\] 다운로드 센터/);
   assert.doesNotMatch(a.document.markdown, /brief.txt|<h1>HTML<\/h1>|## 대화·텍스트 원문|## HTML 원문/);
   assert.equal(a.document.inputSnapshot.html, input.html);
+  assert.match(a.document.markdown, /v1\.0 \(최초 작성\)/);
+  assert.match(a.document.markdown, /PDF 복사·인쇄 방지 필요 여부/);
+  const b = await mockRequirementsService.get("req", second.id, signal);
+  assert.match(b.document.markdown, /v02 \(협의 결과 반영\)/);
+  assert.doesNotMatch(b.document.markdown, /\| 9 \| 미리보기 화면에서 PDF 복사·인쇄 방지 필요 여부/);
+  assert.match(b.document.markdown, /별도로 진행하지 않음/);
+  assert.equal((await mockRequirementsService.get("req", first.id, signal)).document.markdown, a.document.markdown);
+
   assert.deepEqual(a.document.contextDocumentIds, []);
   assert.equal(
     (await mockRequirementsService.get("req", first.id, signal)).document.id,

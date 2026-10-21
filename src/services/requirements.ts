@@ -1,6 +1,6 @@
 import { waitForPoll } from "./generationTransport";
 import { saveMaterialFile } from "../storage/materialFiles";
-import { requirementFixture } from "../mocks/fixtures";
+import { requirementFixtureForGeneration } from "../mocks/fixtures";
 import { renderMockTemplate } from "../mocks/template";
 import type {
   InputSnapshot,
@@ -162,6 +162,7 @@ export const mockRequirementsService: RequirementsService = {
     const elapsed = Date.now() - Date.parse(g.createdAt);
     if (elapsed < 900) return { ...g, status: "running", phase: "generating" };
     const s = g.inputSnapshot;
+    const requirementFixture = requirementFixtureForGeneration(g.generationNumber);
     const document: RequirementDocument = {
       displayTitle: g.displayTitle || s.title || "요구사항",
       contextDocumentIds: g.contextDocumentIds || [],

@@ -1,3 +1,4 @@
+import initialRequirements from "./step01-requirements-v01.json" with { type: "json" };
 import downloadCenter from "./download-center.json" with { type: "json" };
 import requirements from "./step01-requirements.json" with { type: "json" };
 import systemMock from "./step01-system-mock.json" with { type: "json" };
@@ -11,7 +12,7 @@ import type {
 } from "../domain/types";
 
 // Check discriminators rather than casting edited JSON to a trusted domain type.
-if (requirements.source !== "mock")
+if (requirements.source !== "mock" || initialRequirements.source !== "mock")
   throw new Error("요구사항 Mock source는 mock이어야 합니다.");
 if (
   systemMock.source !== "mock" ||
@@ -50,3 +51,8 @@ export const analysisFixture: Omit<Analysis, "id" | "basis"> = {
   }),
 };
 export const reportFixture = report;
+
+/** Generation order is captured on the job so polling/retries keep the same fixture. */
+export function requirementFixtureForGeneration(generationNumber: number) {
+  return generationNumber === 1 ? { ...initialRequirements, source: "mock" as const } : requirementFixture;
+}
