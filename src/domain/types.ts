@@ -1,3 +1,4 @@
+import { validDueDate } from "./requestDetails";
 export type ResourceType = "UI" | "Logic" | "API" | "DB" | "Permission";
 export interface Basis {
   requestId: string;
@@ -23,6 +24,7 @@ export interface Impact {
   days: number;
 }
 export interface Analysis {
+  source?: "mock" | "server";
   id?: string;
   basis: Basis;
   impacts: Impact[];
@@ -76,12 +78,15 @@ export interface WorkRequest {
   text: string;
   html: string;
   dueDate: string;
+  /** 틀 고르기 ② 화면 종류: 신규 화면 또는 기존 화면 수정. */
+  screenType?: "new" | "modify";
   revision: number;
   inputRevision: number;
   legacyVersion: string;
   agreement: string;
   opinion: string;
   attachments: Attachment[];
+  createdAt?: string;
   updatedAt: string;
   requirements: RequirementDocument[];
   generations: RequirementGeneration[];
@@ -90,6 +95,8 @@ export interface WorkRequest {
   mocks: MockArtifact[];
   mockJobs: MockJob[];
   selectedMockId?: string;
+  /** Set when the user skipped 미리 붓기 from 성분 보기; shown until a preview is completed. */
+  previewSkipped?: boolean;
   reviewedMockIds: string[];
   confirmations: RequirementConfirmation[];
   activeConfirmationId?: string;
@@ -175,15 +182,28 @@ export function blankRequest(): WorkRequest {
     confirmations: [],
     acceptanceCriteria: "",
     exclusions: "",
+    createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     scopeReviewed: false,
     estimateReviewed: false,
   };
 }
+/** Display name for a request; untitled ones get their (local) creation time. Never stored. */
+export function requestTitle(
+  r: Pick<WorkRequest, "title" | "createdAt" | "updatedAt">,
+) {
+  if (r.title.trim()) return r.title;
+  const time = Date.parse(r.createdAt || r.updatedAt || "");
+  if (!Number.isFinite(time)) return "제목 없는 요청";
+  const d = new Date(time);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `새 요청 · ${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 export function editRequest(
   r: WorkRequest,
   patch: Partial<WorkRequest>,
 ): WorkRequest {
+  if (patch.dueDate !== undefined && !validDueDate(patch.dueDate)) throw new Error("희망 완료일은 4자리 연도의 유효한 날짜로 입력해주세요.");
   const inputChanged = ["title", "text", "html", "attachments", "dueDate"].some(
     (k) => k in patch,
   );
@@ -228,6 +248,47 @@ export function applyRequirement(r: WorkRequest, id: string, expectedInputRevisi
     estimateReviewed: false,
   };
   next.requirement = { basis: basisOf(next), markdown: doc.markdown };
+  return next;
+}
+/** Fields that applyRequirement changes; captured so a new 협의 기준 can be undone. */
+export type RequirementSelection = Pick<
+  WorkRequest,
+  | "selectedRequirementDocumentId"
+  | "requirementAppliedAtInputRevision"
+  | "requirement"
+  | "selectedMockId"
+  | "revision"
+  | "scopeReviewed"
+  | "estimateReviewed"
+>;
+export const selectionOf = (r: WorkRequest): RequirementSelection => ({
+  selectedRequirementDocumentId: r.selectedRequirementDocumentId,
+  requirementAppliedAtInputRevision: r.requirementAppliedAtInputRevision,
+  requirement: r.requirement,
+  selectedMockId: r.selectedMockId,
+  revision: r.revision,
+  scopeReviewed: r.scopeReviewed,
+  estimateReviewed: r.estimateReviewed,
+});
+/**
+ * Undo a 협의 기준 change. If nothing else changed since (same revision), roll back exactly so
+ * earlier 미리 붓기/탕도 살피기 results stay current; otherwise move forward to the old selection.
+ */
+export function restoreSelection(
+  r: WorkRequest,
+  previous: RequirementSelection,
+  appliedRevision: number,
+): WorkRequest {
+  if (r.revision === appliedRevision) return { ...r, ...previous };
+  const next: WorkRequest = {
+    ...r,
+    ...previous,
+    revision: r.revision + 1,
+    scopeReviewed: false,
+    estimateReviewed: false,
+  };
+  if (next.requirement)
+    next.requirement = { ...next.requirement, basis: basisOf(next) };
   return next;
 }
 export function snapshotOf(r: WorkRequest): InputSnapshot {
@@ -276,13 +337,16 @@ export interface MockArtifact {
   legacyVersion: string;
   generationNumber: number;
   createdAt: string;
-  source: "mock";
-  renderer: "download-center-demo";
+  source: "mock" | "server";
+  renderer: "download-center-demo" | "server-html";
+  html?: string;
   behaviors: string[];
   assumptions: string[];
   unconnectedFeatures: string[];
 }
 export interface MockJob {
+  transport?: "server";
+  requestId?: string;
   id: string;
   idempotencyKey: string;
   requirementDocumentId: string;

@@ -1,4 +1,6 @@
-# VIBELATION
+# 쇳물
+
+요구사항을 녹여, 기존 틀에 붓다. Figma 시안의 색상·로고·문구를 적용한 요구사항 검토 작업실입니다.
 
 React + Vite + TypeScript 기반 한국어 프런트엔드 시연 앱입니다.
 
@@ -15,12 +17,23 @@ npm run build
 
 개발 주소: http://127.0.0.1:5173/project-vibelation/
 
-## 3단계 사용법
+## Figma 화면 흐름과 코드 ZIP
+
+시작 → 틀 고르기 → 쇳물 녹이기 → 성분 보기 → 미리 붓기(선택) → 탕도 살피기 → 붓기 준비 완료 순서로 화면을 나눴습니다. 기존 요청·문서·확정·등록 이력은 유지합니다.
+
+설정 · 레거시 틀 관리에서 시스템 이름과 프론트엔드/백엔드 ZIP을 등록합니다. ZIP 실제 bytes는 브라우저 IndexedDB에 보관하며, 적용한 코드 기준은 이전 버전을 보존합니다. 새 기준을 기존 요청에 자동 적용하지 않습니다. 브라우저 보관 상한은 파일당 100MiB이며 ZIP 내부 검증·압축 해제는 수행하지 않습니다.
+
+`VITE_GENERATION_API_URL`(예: `https://server.example/api`)을 설정하면 Mock 생성과 레거시 분석 시점에 MD와 선택 코드 ZIP을 함께 전송합니다. multipart 필드는 `file`(requirements.md), 반복 `sourceFiles`(ZIP), `sourceManifest`(index/id/name/role/sha256/sizeBytes JSON), `legacyVersion`입니다. Mock 생성은 `requirementDocumentId`도 보냅니다. Content-Type은 브라우저가 boundary와 함께 설정합니다. 서버 URL·필드·응답은 BE 합의 전 제안 계약입니다.
+
+미설정 시 실제 서버 전송 없이 기존 로컬 시연을 제공합니다. `VITE_REQUIREMENTS_API_URL`은 기존 MD 생성용 별도 설정이며 두 기능의 서버 설정을 혼동하지 않습니다. 임의 서버 HTML은 스크립트를 차단한 정적 Preview로 표시하며, 사전 작성된 신뢰된 동작 Mock만 기존 격리 실행을 유지합니다.
+
+## 기존 핵심 기능
+
 
 1. Step 01 자료 입력·확정: 입력 → 요구사항 MD 생성 → ‘이 문서로 협의하기’로 기준 선택.
 2. 필요하면 시스템 적용 예상 화면을 생성합니다. 버전 목록 없이 최신 화면만 보여주며 HTML 코드 다운로드로 현업에게 전달합니다.
 3. 협의한 사항을 요구사항 MD에 반영한 후 ‘요구사항 확정 후 분석하기’를 누릅니다.
-4. Step 02 레거시 분석에는 확정한 requirements.md 파일 하나만 전달합니다. Mock HTML·원본 입력·첨부·별도 협의 필드는 분석 요청에 포함하지 않습니다.
+4. Step 02 레거시 분석에는 확정한 requirements.md와 선택한 레거시 코드 ZIP들을 전달합니다. Mock HTML·원본 입력·일반 첨부·별도 협의 필드는 분석 요청에 포함하지 않습니다.
 5. Step 03 최종 검토: 리포트 생성 → 두 최종 검토 체크 → 등록합니다.
 
 확정은 요구사항 MD의 불변 스냅샷입니다. Mock 생성·열람은 확정과 분석 결과에 영향을 주지 않습니다. 입력·기준 문서 변경 시 재확정해야 합니다. 이전 확정 이력은 보존하며, 이전 방식의 확정은 MD만 사용하는 기준으로 다시 확정합니다.
@@ -58,7 +71,7 @@ HTML은 DOMPurify와 CSSOM으로 정리한 뒤 빈 sandbox iframe과 CSP로 격�
 - `src/domain/types.ts`: 입력 revision·생성 이력·적용 문서·분석 기준
 - `src/features/RequestInput.tsx`, `useRequirements.ts`: Step 01과 생성/업로드 작업
 - `src/features/SystemMockPanel.tsx`, `RequirementConfirmationPanel.tsx`: 선택적 동작 Mock·협의·확정
-- `src/services/systemMocks.ts`: 선택 Mock 생성·복원용 로컬 시연 서비스
+- `src/services/systemMocks.ts`: 선택 Mock 생성·복원·서버 생성 어댑터
 - `src/services/requirements.ts`: RequirementsService·HTTP·Mock 어댑터
 - `src/services/contract.ts`: 후속 단계 시연 서비스
 - `src/storage/repositories.ts`: 스키마 검증·이전 자료 마이그레이션·등록 스냅샷
@@ -76,3 +89,18 @@ HTML은 DOMPurify와 CSSOM으로 정리한 뒤 빈 sandbox iframe과 CSP로 격�
 ## Mock JSON 데이터
 
 단계별 고정 응답과 문서 양식은 `src/mocks/*.json`에 있습니다. 상세 파일 목록·자리표시자·수정 후 반영 방법은 [Mock 데이터 안내](src/mocks/README.md)를 참고하세요. 생성 ID·상태·입력값 반영은 서비스 코드에서 처리합니다. JSON 수정은 이미 저장된 문서 이력을 변경하지 않으며 새로 생성한 결과에 적용됩니다.
+
+## 리팩터링 구조와 검증
+
+- `src/main.tsx`: React 진입점; `src/App.tsx`: 화면 분기
+- `src/features/useWorkspace.ts`: 요청 저장·경합·확정·분석·리포트·등록
+- `src/components/WorkflowShell.tsx`: 헤더·진행 표시·요청 컨텍스트
+- `src/features/LegacySettings.tsx`, `LegacyPicker.tsx`: 코드 보관·기준 선택
+- `src/features/MaterialCards.tsx`, `RequestInput.tsx`: 자료 입력·MD 검토
+- `src/features/AnalysisPage.tsx`, `ReviewPage.tsx`: 영향 자원·최종 검토
+- `src/domain/legacySources.ts`, `src/storage/legacySources.ts`: ZIP payload·IndexedDB 저장
+- `src/services/generationTransport.ts`: 공통 MD+ZIP 전송
+
+`npm test`는 도메인·HTTP 계약 회귀 검증입니다. 브라우저 검증은 `node tests/browser-workflow.mjs`, 서버 응답 대역 검증은 `node tests/browser-generation.mjs`로 실행합니다. Playwright와 Chrome이 필요하며, 번들 런타임 사용 시 `PLAYWRIGHT_MODULE`에 Playwright 패키지 경로를 지정합니다. 두 스크립트는 임시 로컬 Vite 서버와 격리된 브라우저를 사용합니다. 서버 응답은 테스트에서 대체하며 실제 BE 통합 성공을 뜻하지 않습니다. 스크린샷은 Git 제외된 `test-results/`에 저장합니다.
+
+요구사항 문서 이력의 vN을 선택하면 같은 번호의 입력 자료에서 생성 당시 텍스트·HTML 코드/정적 미리보기·첨부 목록을 조회합니다. 열람은 현재 입력과 협의 기준을 바꾸지 않습니다. 버전별 원문 보존 검증은 `node tests/browser-documentVersions.mjs`로 실행합니다.

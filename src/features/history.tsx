@@ -1,17 +1,25 @@
 import { createMockHistoryService } from "../services/history";
 import { MarkdownPreview } from "../components/MarkdownPreview";
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Search,
-  FileText,
+  ChevronDown,
   ChevronRight,
   Download,
   ArrowLeft,
 } from "lucide-react";
-import { activeConfirmation, type Registration } from "../domain/types";
-import { displayDate, downloadMarkdown } from "../utils/downloads";
-import { Empty, Tag } from "../components/shared";
+import {
+  activeConfirmation,
+  appliedDocument,
+  requestTitle,
+  type Registration,
+} from "../domain/types";
+import { DEMO_LEGACY } from "../domain/legacySources";
+import { legacyRepository } from "../storage/legacySources";
+import { ScreenTitle } from "../components/WorkflowShell";
+import { displayDate, dotDate, downloadMarkdown } from "../utils/downloads";
+import { Empty, LaneBadge, Tag } from "../components/shared";
 export function HistoryPage({ items, id }: { items: Registration[]; id?: string }) {
   const [result, setResult] = useState<{items: Registration[]; id?: string; source: Registration[]} | null>(null);
   const [error, setError] = useState("");
@@ -31,6 +39,30 @@ export function HistoryPage({ items, id }: { items: Registration[]; id?: string 
   if (!result || result.id !== id || result.source !== items) return <p role="status">검토 이력을 불러오는 중입니다…</p>;
   return <HistoryContent key={id || "list"} items={result.items} id={id} />;
 }
+const laneOrder = ["UI", "Logic", "API", "DB", "Permission"] as const;
+/** 틀 id → display name: built-in demo plus ZIP references saved in this browser. */
+function useLegacyNames() {
+  const [names, setNames] = useState<Record<string, string>>({
+    [DEMO_LEGACY.id]: DEMO_LEGACY.name,
+  });
+  useEffect(() => {
+    let cancelled = false;
+    legacyRepository
+      .references()
+      .then((rows) => {
+        if (!cancelled)
+          setNames((current) => ({
+            ...current,
+            ...Object.fromEntries(rows.map((ref) => [ref.id, ref.name])),
+          }));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return names;
+}
 function HistoryContent({
   items,
   id,
@@ -39,10 +71,23 @@ function HistoryContent({
   id?: string;
 }) {
   const [query, setQuery] = useState("");
+  const legacyNames = useLegacyNames();
   const detail = id ? items.find((i) => i.id === id) : undefined;
-  const filtered = items.filter((i) =>
-    i.request.title.toLowerCase().includes(query.toLowerCase()),
-  );
+  const needle = query.trim().toLowerCase();
+  const filtered = items
+    .map((item) => ({
+      item,
+      legacy:
+        legacyNames[item.request.legacyVersion] || item.request.legacyVersion,
+    }))
+    .filter(
+      ({ item, legacy }) =>
+        !needle ||
+        [requestTitle(item.request), legacy].some((text) =>
+          text.toLowerCase().includes(needle),
+        ),
+    )
+    .sort((a, b) => b.item.registeredAt.localeCompare(a.item.registeredAt));
   if (id)
     return detail ? (
       <>
@@ -116,57 +161,72 @@ function HistoryContent({
     );
   return (
     <>
-      <div className="archive-banner">
-        <div>
-          <span className="section-kicker">KNOWLEDGE ARCHIVE</span>
-          <h2>이번의 검토가, 다음의 근거로.</h2>
-          <p>확정된 협의와 검토 결과를 찾아 업무에 활용하세요.</p>
-        </div>
-        <div className="archive-count">
-          <b>{items.length}</b>
-          <span>누적 검토 리포트</span>
-        </div>
-      </div>
-      <div className="list-toolbar">
-        <h3>
-          검토 리포트 <span>{filtered.length}</span>
-        </h3>
-        <label className="search">
-          <Search size={15} />
+      <ScreenTitle
+        title="[검토 이력]"
+        description="붓기 준비를 마친 요청이 모여 있어요. 비슷한 요청이 오면 지난 검토의 범위와 공수를 참고하세요."
+      />
+      <div className="history-toolbar">
+        <h2>
+          검토 이력 <span>{filtered.length}건</span>
+        </h2>
+        <label className="history-search">
+          <Search size={16} aria-hidden="true" />
           <input
-            aria-label="리포트 제목 검색"
-            placeholder="리포트 제목으로 검색"
+            aria-label="검토 이력 검색"
+            placeholder="제목이나 시스템으로 검색"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
         </label>
       </div>
       {filtered.length ? (
-        <div className="report-list">
-          {filtered.map((i) => (
-            <Link className="report-row" key={i.id} to={`/history/${i.id}`}>
-              <span className="report-icon">
-                <FileText size={24} />
-              </span>
-              <div>
-                <Tag green>검토 등록</Tag>
-                <h3>{i.request.title}</h3>
-                <p>{i.request.text.slice(0, 100)}</p>
-                <small>
-                  {displayDate(i.registeredAt)} · v{i.request.revision} · 시연용
-                  로컬 기록
-                </small>
-              </div>
-              <ChevronRight size={18} />
-            </Link>
-          ))}
+        <div className="history-cards">
+          {filtered.map(({ item, legacy }) => {
+            const r = item.request;
+            const doc = appliedDocument(r);
+            const impacts = r.analysis?.impacts || [];
+            const lanes = laneOrder.filter((lane) =>
+              impacts.some((i) => i.type === lane),
+            );
+            const total =
+              Math.round(impacts.reduce((sum, i) => sum + i.days, 0) * 10) /
+              10;
+            const meta = [
+              legacy,
+              doc && `협의 기준 ${doc.generationNumber}차안`,
+              dotDate(item.registeredAt),
+            ].filter(Boolean);
+            return (
+              <Link
+                className="history-card"
+                key={item.id}
+                to={`/history/${item.id}`}
+              >
+                <span className="history-card-title">
+                  {requestTitle(r)}
+                  <ChevronRight size={18} aria-hidden="true" />
+                </span>
+                <span className="history-card-meta">{meta.join(" · ")}</span>
+                {(lanes.length > 0 || impacts.length > 0) && (
+                  <span className="history-card-scope">
+                    <span className="history-card-lanes">
+                      {lanes.map((lane) => (
+                        <LaneBadge key={lane} type={lane} compact />
+                      ))}
+                    </span>
+                    {impacts.length > 0 && <b>총 {total}일</b>}
+                  </span>
+                )}
+              </Link>
+            );
+          })}
         </div>
       ) : (
-        <Empty>
+        <p className="history-empty">
           {query
-            ? "검색 결과가 없습니다. 다른 제목으로 검색해주세요."
-            : "등록한 검토 리포트가 없습니다. 요청 작업실에서 첫 검토를 완료해주세요."}
-        </Empty>
+            ? `'${query}'와 맞는 검토 이력이 없어요.`
+            : "아직 검토 이력이 없어요. 붓기 준비 완료에서 이력에 등록하면 여기에 모여요."}
+        </p>
       )}
     </>
   );
@@ -201,124 +261,189 @@ const teamRows = [
     due: "2026-10-28",
   },
 ];
-export function TeamPage() {
+const TEAM_BASE_DATE = "2026-10-17";
+type TeamRow = (typeof teamRows)[number];
+const isDone = (r: TeamRow) => r.status === "완료";
+const isOverdue = (r: TeamRow) => r.due < TEAM_BASE_DATE && !isDone(r);
+const teamFilters = [
+  { id: "all", label: "전체", match: () => true },
+  { id: "active", label: "진행 중", match: (r: TeamRow) => !isDone(r) },
+  { id: "overdue", label: "희망일 경과", match: isOverdue },
+  { id: "done", label: "완료", match: isDone },
+] as const;
+type TeamFilter = (typeof teamFilters)[number]["id"];
+export function TeamPage({ history }: { history: Registration[] }) {
   const [query, setQuery] = useState(""),
-    [filter, setFilter] = useState("전체"),
-    [selected, setSelected] = useState("");
+    [filter, setFilter] = useState<TeamFilter>("all"),
+    [expanded, setExpanded] = useState("");
+  // 검토 이력(샘플 포함)에서 같은 제목의 리포트를 찾아 "검토 이력 보기"를 연결한다.
+  const [reports, setReports] = useState<Registration[]>([]);
+  useEffect(() => {
+    const controller = new AbortController();
+    createMockHistoryService(history)
+      .list(controller.signal)
+      .then((page) => setReports(page.items))
+      .catch(() => {});
+    return () => controller.abort();
+  }, [history]);
+  const active = teamFilters.find((f) => f.id === filter)!;
+  const needle = query.trim().toLowerCase();
   const rows = teamRows.filter(
     (r) =>
-      r.title.includes(query) && (filter === "전체" || r.status === filter),
+      active.match(r) &&
+      (!needle ||
+        [r.title, r.id, r.owner].some((t) => t.toLowerCase().includes(needle))),
   );
-  const detail = teamRows.find((r) => r.id === selected);
+  const toggle = (id: string) => setExpanded((cur) => (cur === id ? "" : id));
   return (
     <>
-      <div className="stats">
-        <div className="stat">
-          <span>전체 요청</span>
-          <strong>4</strong>
-          <small>시연 데이터</small>
-        </div>
-        <div className="stat">
-          <span>진행 중</span>
-          <strong>3</strong>
-          <small>완료 1건 제외</small>
-        </div>
-        <div className="stat">
-          <span>희망일 경과</span>
-          <strong>1</strong>
-          <small>기준일 2026-10-17</small>
-        </div>
-        <div className="stat">
-          <span>검토 완료</span>
-          <strong>1</strong>
-          <small>샘플 상태</small>
-        </div>
-      </div>
-      <div className="info-strip">
-        읽기 전용 샘플 현황 · 기준일 2026-10-17. 실제 SR·일정·메일은 연결하지
-        않았습니다.
-      </div>
-      <section className="panel">
-        <div className="list-toolbar padded">
-          <h3>팀 요청 현황</h3>
-          <div className="toolbar">
-            <label className="search">
-              <Search size={14} />
-              <input
-                aria-label="팀 요청 검색"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="요청 제목 검색"
-              />
-            </label>
-            <select
-              aria-label="요청 상태"
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
+      <ScreenTitle
+        title="[팀 진행 현황]"
+        description="팀원들이 진행 중인 SR 요청과 희망일을 한눈에 확인해요."
+      />
+      <div className="team-stats">
+        {teamFilters.map((f) => {
+          const count = teamRows.filter(f.match).length;
+          const pressed = f.id !== "all" && filter === f.id;
+          return (
+            <button
+              key={f.id}
+              className={`team-stat ${pressed ? "selected" : ""}`}
+              aria-pressed={pressed}
+              onClick={() => setFilter(pressed || f.id === "all" ? "all" : f.id)}
             >
-              {["전체", "협의 중", "검토 중", "작업 중", "완료"].map((s) => (
-                <option key={s}>{s}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-        <div className="table-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th>요청</th>
-                <th>담당자</th>
-                <th>상태</th>
-                <th>희망일</th>
-                <th>상세</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.id}>
-                  <td>
-                    <small>{r.id}</small>
-                    <b>{r.title}</b>
-                  </td>
-                  <td>{r.owner}</td>
-                  <td>
-                    <Tag green={r.status === "완료"}>{r.status}</Tag>
-                  </td>
-                  <td>
-                    {r.due}
-                    {r.due < "2026-10-17" && r.status !== "완료" && (
-                      <small className="warning-text">희망일 경과</small>
-                    )}
-                  </td>
-                  <td>
-                    <button
-                      onClick={() => setSelected(selected === r.id ? "" : r.id)}
-                      aria-expanded={selected === r.id}
-                    >
-                      상세 보기
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {!rows.length && <Empty>조건에 맞는 요청이 없습니다.</Empty>}
-        </div>
-      </section>
-      {detail && (
-        <section className="panel panel-content" aria-label="선택 요청 상세">
-          <Tag>{detail.id}</Tag>
-          <h2>{detail.title}</h2>
-          <p>
-            {detail.owner} · {detail.status} · 희망일 {detail.due}
-          </p>
-          <p>
-            표준 공기와 실제 납기 가능성은 업무 달력·인원 정책 확정 후
-            검토합니다.
-          </p>
-          <button onClick={() => setSelected("")}>상세 닫기</button>
-        </section>
-      )}
+              <span>{f.label}</span>
+              <strong
+                className={f.id === "overdue" && count > 0 ? "warning" : ""}
+              >
+                {count}
+              </strong>
+              {f.id === "overdue" && (
+                <small>
+                  기준일 {TEAM_BASE_DATE.slice(5).replace("-", "/")}
+                </small>
+              )}
+            </button>
+          );
+        })}
+      </div>
+      <div className="history-toolbar">
+        <h2>
+          {filter === "all" ? "요청" : active.label} {rows.length}건
+        </h2>
+        <label className="history-search">
+          <Search size={16} aria-hidden="true" />
+          <input
+            aria-label="팀 요청 검색"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="요청 제목이나 담당자로 검색"
+          />
+        </label>
+      </div>
+      <div className="table-scroll">
+        <table className="team-table">
+          <colgroup>
+            <col style={{ width: "46%" }} />
+            <col style={{ width: "16%" }} />
+            <col style={{ width: "18%" }} />
+            <col style={{ width: "20%" }} />
+          </colgroup>
+          <thead>
+            <tr>
+              <th>요청</th>
+              <th>담당자</th>
+              <th>상태</th>
+              <th>희망일</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => {
+              const open = expanded === r.id;
+              const report = reports.find((x) => x.request.title === r.title);
+              return (
+                <Fragment key={r.id}>
+                  <tr
+                    className={open ? "expanded" : ""}
+                    tabIndex={0}
+                    aria-expanded={open}
+                    onClick={() => toggle(r.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        toggle(r.id);
+                      }
+                    }}
+                  >
+                    <td>
+                      <span className="team-title">{r.title}</span>
+                      <small>{r.id}</small>
+                    </td>
+                    <td className="team-muted">{r.owner}</td>
+                    <td>
+                      <span
+                        className={`team-status ${isDone(r) ? "done" : ""}`}
+                      >
+                        {isDone(r) ? (
+                          <span aria-hidden="true">✓</span>
+                        ) : (
+                          <i aria-hidden="true" />
+                        )}
+                        {r.status}
+                      </span>
+                    </td>
+                    <td className="team-muted">
+                      <span className="team-due">
+                        <span>
+                          {r.due}
+                          {isOverdue(r) && (
+                            <em className="team-overdue">경과</em>
+                          )}
+                        </span>
+                        <ChevronDown
+                          size={16}
+                          className="team-chevron"
+                          aria-hidden="true"
+                        />
+                      </span>
+                    </td>
+                  </tr>
+                  {open && (
+                    <tr className="team-detail">
+                      <td colSpan={4}>
+                        <div>
+                          <div className="team-detail-body">
+                            <small>{r.id}</small>
+                            <strong>{r.title}</strong>
+                            <span>
+                              {r.owner} · {r.status} · 희망일 {r.due}
+                            </span>
+                            <p>
+                              표준 공기와 실제 납기 가능성은 업무 달력·인원
+                              정책 확정 후 검토합니다.
+                            </p>
+                          </div>
+                          {report && (
+                            <Link
+                              to={`/history/${report.id}`}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              검토 이력 보기 ›
+                            </Link>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+        {!rows.length && (
+          <p className="history-empty">조건에 맞는 요청이 없어요.</p>
+        )}
+      </div>
     </>
   );
 }

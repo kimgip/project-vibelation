@@ -1,47 +1,96 @@
-import { SystemMockPanel } from "./SystemMockPanel";
-import { RequirementConfirmationPanel } from "./RequirementConfirmationPanel";
-import { useState, useRef, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import {
-  Code2,
-  Eye,
-  FileText,
-  Sparkles,
-  Upload,
-  Download,
-  Check,
-  RefreshCw,
-  X,
-} from "lucide-react";
-import { applyRequirement, canGenerate } from "../domain/types";
-import { sample } from "../mocks/download-center";
+  applyRequirement,
+  appliedDocument,
+  hasAppliedRequirement,
+  canGenerate,
+  canConfirmRequirement,
+  uploadsReady,
+  restoreSelection,
+  selectionOf,
+  type RequirementSelection,
+} from "../domain/types";
+import { requirementsService } from "../services/requirements";
+import { generationBase } from "../services/generationTransport";
+import { MarkdownPreview } from "../components/MarkdownPreview";
+import { Empty, Tag } from "../components/shared";
 import {
-  requirementsService,
-  pendingFiles,
-  FILE_POLICY,
-} from "../services/requirements";
-import { StaticHtmlFrame } from "../components/StaticHtmlFrame";
-import { Tag, Empty } from "../components/shared";
-import { downloadMarkdown, displayDate } from "../utils/downloads";
+  inputView,
+  RequestContext,
+  ScreenTitle,
+  StepFooter,
+} from "../components/WorkflowShell";
+import { downloadMarkdown, dotDate } from "../utils/downloads";
 import { useRequirements } from "./useRequirements";
+import { MaterialCards } from "./MaterialCards";
+import { DocumentSources } from "./DocumentSources";
+import { LegacyPicker } from "./LegacyPicker";
+import { SystemMockPanel } from "./SystemMockPanel";
+// 미리 붓기의 "협의 및 요구사항 확정" 패널은 잠시 숨김 처리. 다시 쓰려면 아래 import와 JSX 주석을 함께 해제하세요.
+// import { RequirementConfirmationPanel } from "./RequirementConfirmationPanel";
 import type { WorkspaceProps } from "./workspace";
+import type { Material } from "./Landing";
 export function InputPage(props: WorkspaceProps) {
   const { r, edit, update, go, saved } = props;
-  const [tab, setTab] = useState("text"),
-    [htmlMode, setHtmlMode] = useState("code"),
-    [viewId, setViewId] = useState<string>();
+  const location = useLocation();
+  const view = inputView(r, location.search);
+  const actions = useRequirements(r, update, edit, saved);
+  const [viewId, setViewId] = useState<string>();
   const [applying, setApplying] = useState(false),
     [applyError, setApplyError] = useState("");
-  const codeRef = useRef<HTMLTextAreaElement>(null),
-    selection = useRef<[number, number]>([0, 0]);
-  const { generate, addFiles, upload, retry, error, pending } = useRequirements(
-    r,
-    update,
-    edit,
-    saved,
-  );
+  const previous = useRef(r.requirements[0]?.id),
+    showResult = useRef(false);
+  const selectionController = useRef<AbortController | null>(null);
+  useEffect(() => () => selectionController.current?.abort(), []);
+  const [toast, setToast] = useState<{
+    version: number;
+    previous: RequirementSelection;
+    appliedRevision: number;
+  }>();
+  useEffect(() => {
+    if (!toast) return;
+    const timer = window.setTimeout(() => setToast(undefined), 4000);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
   const doc = r.requirements.find((d) => d.id === viewId) || r.requirements[0];
-  async function applyDocument() {
-    if (!doc || applying) return;
+  useEffect(() => {
+    const id = r.requirements[0]?.id;
+    if (id && id !== previous.current) {
+      setViewId(id);
+      if (showResult.current) {
+        showResult.current = false;
+        go("input?view=requirements");
+      }
+    }
+    previous.current = id;
+  }, [r.requirements]);
+  // The current 협의 기준, only while it still matches the current input.
+  const base = hasAppliedRequirement(r) ? appliedDocument(r) : undefined;
+  async function undoSelection() {
+    if (!toast) return;
+    const { previous, appliedRevision } = toast;
+    setToast(undefined);
+    setApplyError("");
+    try {
+      if (previous.selectedRequirementDocumentId)
+        await requirementsService.select(
+          r.id,
+          previous.selectedRequirementDocumentId,
+          r.inputRevision,
+          new AbortController().signal,
+        );
+      update((latest) => restoreSelection(latest, previous, appliedRevision));
+    } catch (e) {
+      setApplyError(
+        e instanceof Error ? e.message : "이전 기준으로 되돌리지 못했습니다.",
+      );
+    }
+  }
+  async function selectDocument() {
+    if (!doc || applying || !saved) return;
+    const controller = new AbortController();
+    selectionController.current = controller;
     setApplying(true);
     setApplyError("");
     try {
@@ -49,396 +98,286 @@ export function InputPage(props: WorkspaceProps) {
         r.id,
         doc.id,
         r.inputRevision,
-        new AbortController().signal,
+        controller.signal,
       );
-      let accepted = false;
-      update((latest) => {
-        const next = applyRequirement(latest, doc.id, r.inputRevision);
-        accepted = true;
-        return next;
-      });
-      if (accepted)
-        document
-          .getElementById("system-mock")
-          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (!controller.signal.aborted)
+        update((latest) => {
+          const next = applyRequirement(latest, doc.id, r.inputRevision);
+          if (next !== latest)
+            setToast({
+              version: doc.generationNumber,
+              previous: selectionOf(latest),
+              appliedRevision: next.revision,
+            });
+          return next;
+        });
     } catch (e) {
-      setApplyError(
-        e instanceof Error ? e.message : "문서 적용에 실패했습니다.",
-      );
+      if (!controller.signal.aborted)
+        setApplyError(
+          e instanceof Error ? e.message : "문서 적용에 실패했습니다.",
+        );
     } finally {
-      setApplying(false);
+      if (!controller.signal.aborted) setApplying(false);
     }
   }
-  useEffect(() => {
-    if (htmlMode === "code" && codeRef.current)
-      codeRef.current.setSelectionRange(...selection.current);
-  }, [htmlMode, tab]);
-  const previousFirst = useRef(r.requirements[0]?.id);
-  useEffect(() => {
-    const id = r.requirements[0]?.id;
-    if (id && id !== previousFirst.current) setViewId(id);
-    previousFirst.current = id;
-  }, [r.requirements]);
-  const stateLabels = {
-    pending: "업로드 대기",
-    uploading: "업로드 중",
-    uploaded:
-      requirementsService.mode === "mock" ? "Mock 업로드 완료" : "업로드 완료",
-    failed: "업로드 실패",
-    needsReselect: "파일 재선택 필요",
-  };
+  if (view === "legacy") return <LegacyPicker {...props} />;
+  if (view === "preview" && hasAppliedRequirement(r))
+    return (
+      <>
+        <ScreenTitle
+          title="[미리 붓기]"
+          description="레거시 UI에 맞춘 예상 화면을 확인하고, 현업과 요구사항을 협의해 보세요."
+        />
+        <RequestContext r={r} edit={edit} />
+        <p className="workflow-info">
+          {generationBase
+            ? "생성 시 선택 MD와 코드 ZIP을 서버로 전송합니다."
+            : "서버 미설정 · 사전 작성된 화면으로 시연합니다. 실제 코드 분석·서버 전송은 수행하지 않습니다."}
+        </p>
+        <SystemMockPanel r={r} update={update} saved={saved} />
+        {/* <RequirementConfirmationPanel {...props} /> */}
+        <StepFooter
+          back={{
+            label: "‹ 성분 보기",
+            onClick: () => go("input?view=requirements"),
+          }}
+          backText={{
+            label: "+ 자료 추가/수정",
+            onClick: () => go("input?view=materials"),
+          }}
+          next={{
+            label: "탕도 살피기 ›",
+            disabled: !saved || !!props.busy || !canConfirmRequirement(r),
+            onClick: () => props.confirmAndAnalyze(),
+          }}
+          reason={
+            !saved
+              ? "저장이 완료되면 진행할 수 있어요"
+              : props.busy
+                ? "진행 중인 작업이 끝나면 진행할 수 있어요"
+                : "기준 MD를 선택하면 진행할 수 있어요"
+          }
+        />
+      </>
+    );
+  if (view === "materials") {
+    const values = location.state?.materials;
+    const initial: Material[] = Array.isArray(values)
+      ? values.filter((v): v is Material =>
+          ["text", "html", "file"].includes(v),
+        )
+      : ["text"];
+    return (
+      <>
+        <ScreenTitle
+          title="[쇳물 녹이기]"
+          description="선택한 형태별로 요구사항을 넣어주세요. 나중에 자료를 추가/수정할 수 있어요."
+        />
+        <RequestContext r={r} edit={edit} />
+        <MaterialCards
+          r={r}
+          edit={edit}
+          actions={actions}
+          initial={initial.length ? initial : ["text"]}
+        />
+        {actions.error && (
+          <p role="alert" className="inline-error">
+            {actions.error}
+          </p>
+        )}
+        {actions.pending && (
+          <p role="status" className="workflow-notice">
+            요구사항을 정리하고 있습니다. 입력과 기존 문서는 보존됩니다.
+          </p>
+        )}
+        <p className="workflow-info">
+          {requirementsService.mode === "mock"
+            ? "서버 미설정 · 파일 내용 분석과 이전 MD 종합은 수행하지 않는 로컬 시연입니다."
+            : "현재 입력 전체를 서버로 전달합니다."}
+        </p>
+        <StepFooter
+          back={{
+            label: "‹ 틀 고르기",
+            onClick: () => go("input?view=legacy"),
+          }}
+          next={{
+            label: "성분 보기 ›",
+            disabled: !saved || !!actions.pending || !canGenerate(r),
+            onClick: () => {
+              showResult.current = true;
+              actions.generate();
+            },
+          }}
+          reason={
+            !saved
+              ? "저장이 완료되면 진행할 수 있어요"
+              : actions.pending
+                ? "요구사항 정리가 끝나면 진행할 수 있어요"
+                : !r.title.trim()
+                  ? "요청 제목을 입력하면 진행할 수 있어요"
+                  : !uploadsReady(r)
+                    ? "파일 업로드가 끝나면 진행할 수 있어요"
+                    : "요구사항을 입력하면 진행할 수 있어요"
+          }
+        />
+      </>
+    );
+  }
   return (
     <>
-      <div className="section-caption">
-        <div>
-          <span className="section-kicker">STEP 01</span>
-          <h2>현업의 자료에서, 명확한 요구사항으로</h2>
-        </div>
-        <small>입력을 모으고 생성된 요구사항을 검토합니다.</small>
-      </div>
-      <div className="info-strip">
-        <FileText size={16} />
-        <span>
-          {requirementsService.mode === "mock"
-            ? "서버 미연결 Mock · 파일 내용 분석과 이전 MD 종합은 수행하지 않습니다."
-            : "현재 입력 전체를 서버에 전달하여 요구사항을 생성합니다. 후속 단계 분석은 시연 Mock입니다."}
-        </span>
-      </div>
-      <div className="request-input-grid">
-        <section className="panel input-panel">
-          <div className="panel-heading">
-            <span>
-              <FileText size={16} />
-              요구사항 입력
-            </span>
-            <Tag>입력 v{r.inputRevision}</Tag>
-          </div>
-          <div className="input-tabs" role="tablist" aria-label="입력 방식">
-            {[
-              ["text", "대화 · 텍스트"],
-              ["html", "HTML"],
-              ["file", "자료 첨부"],
-            ].map(([id, label]) => (
-              <button
-                key={id}
-                role="tab"
-                aria-selected={tab === id}
-                onClick={() => setTab(id)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          <div className="panel-content">
-            {tab === "text" ? (
+      <ScreenTitle
+        title="[쇳물 성분 보기]"
+        description="정리된 요구사항을 확인하고, 레거시에 맞춘 Mock을 만들어요."
+      />
+      <RequestContext r={r} edit={edit} />
+      {view === "preview" && (
+        <p role="status" className="workflow-info">
+          Mock을 만들려면 아래에서 기준 MD를 먼저 선택해주세요.
+        </p>
+      )}
+      {actions.error && (
+        <p role="alert" className="inline-error">
+          {actions.error}
+        </p>
+      )}
+      {r.generations
+        .filter((g) => g.status !== "succeeded")
+        .map((g) => (
+          <div key={g.id} role="status" className="workflow-info">
+            v{g.generationNumber} ·{" "}
+            {g.status === "failed" ? "생성 실패" : "생성 중"}
+            {g.error && (
               <>
-                <div className="field-line">
-                  <label htmlFor="sourceText">대화 · 회의록 · 메일</label>
-                  <button
-                    className="text-button"
-                    onClick={() =>
-                      edit({
-                        title: sample.title,
-                        text: sample.text,
-                        agreement: sample.agreement,
-                      })
-                    }
-                  >
-                    샘플 불러오기
-                  </button>
-                </div>
-                <textarea
-                  id="sourceText"
-                  className="conversation"
-                  maxLength={40000}
-                  value={r.text}
-                  onChange={(e) => edit({ text: e.target.value })}
-                  placeholder="요구사항과 대화 내용을 입력해주세요."
-                />
-                <small>
-                  탭을 바꿔도 입력은 유지됩니다. 생성 시 모든 탭의 자료를 함께
-                  전달합니다.
-                </small>
-              </>
-            ) : tab === "html" ? (
-              <>
-                <div className="field-line">
-                  <label htmlFor="sourceHtml">요구사항 HTML</label>
-                  <div
-                    className="code-toggle"
-                    role="group"
-                    aria-label="HTML 보기 방식"
-                  >
-                    <button
-                      aria-pressed={htmlMode === "code"}
-                      onClick={() => setHtmlMode("code")}
-                    >
-                      <Code2 size={14} />
-                      Code
-                    </button>
-                    <button
-                      aria-pressed={htmlMode === "preview"}
-                      onClick={() => {
-                        if (codeRef.current)
-                          selection.current = [
-                            codeRef.current.selectionStart,
-                            codeRef.current.selectionEnd,
-                          ];
-                        setHtmlMode("preview");
-                      }}
-                    >
-                      <Eye size={14} />
-                      Preview
-                    </button>
-                  </div>
-                </div>
-                {htmlMode === "code" ? (
-                  <textarea
-                    ref={codeRef}
-                    id="sourceHtml"
-                    className="conversation code"
-                    maxLength={1000000}
-                    spellCheck={false}
-                    value={r.html}
-                    onChange={(e) => edit({ html: e.target.value })}
-                    placeholder="HTML 코드를 입력하고 Preview로 화면을 확인하세요."
-                  />
-                ) : (
-                  <div className="inline-html-preview">
-                    <StaticHtmlFrame html={r.html} />
-                  </div>
-                )}
-                <small>
-                  프런트엔드에서 HTML/CSS만 표시합니다. JavaScript·외부
-                  자원·서버 호출은 차단합니다. 전달되는 원문은 변경하지
-                  않습니다.
-                </small>
-              </>
-            ) : (
-              <>
-                <div className="upload-box">
-                  <Upload size={26} />
-                  <h3>자료 첨부</h3>
-                  <p>
-                    모든 첨부를 함께 전달합니다. 실패한 파일은 재시도하거나
-                    제외해주세요.
-                  </p>
-                  <input
-                    type="file"
-                    aria-label="자료 첨부"
-                    multiple
-                    accept={FILE_POLICY.extensions
-                      .map((e) => "." + e)
-                      .join(",")}
-                    onChange={(e) => {
-                      void addFiles(Array.from(e.target.files || []));
-                      e.target.value = "";
-                    }}
-                  />
-                  <small>
-                    시연 제한: 파일당 5MiB · 최대 5개
-                    <br />
-                    지원: TXT, MD, HTML, PDF, DOCX, PPTX, PNG, JPG
-                    <br />
-                    운영 제한은 BE 계약 확정 후 적용합니다.
-                  </small>
-                </div>
-                <div className="attachment-list">
-                  {r.attachments.map((a) => (
-                    <div className="attachment-row" key={a.id}>
-                      <div>
-                        <b>{a.name}</b>
-                        <small>
-                          {(a.size / 1024).toFixed(1)} KB ·{" "}
-                          {stateLabels[a.uploadStatus || "needsReselect"]}
-                        </small>
-                        {a.error && <small role="alert">{a.error}</small>}
-                      </div>
-                      {a.uploadStatus === "failed" &&
-                        pendingFiles.has(a.id!) && (
-                          <button
-                            aria-label={`${a.name} 업로드 재시도`}
-                            onClick={() => void upload(a)}
-                          >
-                            <RefreshCw size={13} />
-                          </button>
-                        )}
-                      <button
-                        aria-label={`${a.name} 제외`}
-                        onClick={() =>
-                          edit({
-                            attachments: r.attachments.filter(
-                              (x) => x.id !== a.id,
-                            ),
-                          })
-                        }
-                      >
-                        <X size={13} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-            {error && (
-              <p className="inline-error" role="alert">
-                {error}
-              </p>
-            )}
-          </div>
-          <div className="input-summary">
-            <span>텍스트 {r.text.length.toLocaleString()}자</span>
-            <span>HTML {r.html.length.toLocaleString()}자</span>
-            <span>첨부 {r.attachments.length}개</span>
-          </div>
-          <div className="panel-bottom">
-            <small>매회 현재 입력 전체를 전달합니다.</small>
-            <button
-              className="primary"
-              disabled={!saved || !!pending || !canGenerate(r)}
-              onClick={generate}
-            >
-              <Sparkles size={14} />
-              {pending ? "요구사항 생성 중…" : "요구사항 생성"}
-            </button>
-          </div>
-        </section>
-        <section className="panel requirement-history">
-          <div className="panel-heading">
-            <span>
-              <FileText size={16} />
-              요구사항 생성 이력 <b>{r.requirements.length}</b>
-            </span>
-            <Tag>읽기 전용</Tag>
-          </div>
-          {r.generations
-            .filter((g) => g.status !== "succeeded")
-            .map((g) => (
-              <div className="generation-status" role="status" key={g.id}>
-                <span>
-                  {g.status === "failed"
-                    ? "생성 실패"
-                    : g.error
-                      ? "연결 확인 필요"
-                      : "생성 중"}{" "}
-                  · 입력 v{g.inputSnapshot.inputRevision}
-                  {g.inputSnapshot.inputRevision !== r.inputRevision
-                    ? " · 이전 입력 기준"
-                    : ""}
-                </span>
-                {g.error && <p>{g.error}</p>}
-                {g.error && g.status !== "failed" && (
-                  <button onClick={() => retry(g.id)}>
+                <p>{g.error}</p>
+                {g.status !== "failed" && (
+                  <button onClick={() => actions.retry(g.id)}>
                     작업 상태 다시 확인
                   </button>
                 )}
-                {g.status === "failed" && (
-                  <small>
-                    현재 입력을 확인한 뒤 요구사항 생성 버튼으로 다시
-                    생성해주세요.
-                  </small>
+              </>
+            )}
+          </div>
+        ))}
+      {doc ? (
+        <div className="requirements-layout">
+          <section className="workflow-card requirement-document">
+            <div className="workflow-card-heading">
+              <span className="md-file-name">
+                요구사항_v{doc.generationNumber}.md
+                {base?.id === doc.id && (
+                  <span className="md-base-badge">✓ 협의 기준</span>
                 )}
-              </div>
-            ))}
-          {r.requirements.length ? (
-            <>
-              <div
-                className="requirement-list"
-                aria-label="생성된 요구사항 목록"
+              </span>
+              <button
+                onClick={() =>
+                  downloadMarkdown(
+                    doc.inputSnapshot.title,
+                    `요구사항-생성${doc.generationNumber}`,
+                    doc.generationNumber,
+                    doc.markdown,
+                  )
+                }
               >
+                MD 다운로드 ↓
+              </button>
+            </div>
+            {base?.id !== doc.id && (
+              <div className="md-base-notice">
+                <span>
+                  {base
+                    ? `지금 보는 v${doc.generationNumber}은 협의 기준이 아니에요 · 현재 기준 v${base.generationNumber}`
+                    : "이 MD로 다음 단계를 진행하려면 기준으로 정해 주세요"}
+                </span>
+                <button
+                  className={`md-base-button ${base ? "secondary" : "primary"}`}
+                  disabled={
+                    !saved ||
+                    applying ||
+                    r.attachments.some((a) => a.uploadStatus !== "uploaded")
+                  }
+                  onClick={() => void selectDocument()}
+                >
+                  {applying
+                    ? "적용 중…"
+                    : base
+                      ? `v${doc.generationNumber}을 기준으로 정하기`
+                      : "기준으로 정하기"}
+                </button>
+              </div>
+            )}
+            {applyError && (
+              <p role="alert" className="inline-error md-base-error">
+                {applyError}
+              </p>
+            )}
+            <div className="document-content">
+              <MarkdownPreview markdown={doc.markdown} />
+            </div>
+          </section>
+          <div className="document-aside">
+            <details className="md-history">
+              <summary>
+                요구사항 MD 이력 · {r.requirements.length}개 ·{" "}
+                {base ? `협의 기준 v${base.generationNumber}` : "기준 미선택"}
+              </summary>
+              <div className="md-history-list">
                 {r.requirements.map((d) => (
                   <button
-                    className={doc?.id === d.id ? "selected" : ""}
-                    aria-pressed={doc?.id === d.id}
                     key={d.id}
+                    aria-pressed={doc.id === d.id}
+                    className={doc.id === d.id ? "viewing" : ""}
                     onClick={() => setViewId(d.id)}
                   >
-                    <div>
-                      <b>요구사항 MD · 생성 {d.generationNumber}</b>
-                      <small>
-                        {displayDate(d.createdAt)} ·{" "}
-                        {new Date(d.createdAt).toLocaleTimeString("ko-KR", {
-                          timeZone: "Asia/Seoul",
-                        })}{" "}
-                        · 입력 v{d.inputRevision}
-                      </small>
-                    </div>
-                    <span className="document-badges">
-                      <Tag green={r.selectedRequirementDocumentId === d.id}>
-                        {r.selectedRequirementDocumentId === d.id
-                          ? "후속 적용"
-                          : d.inputRevision === r.inputRevision
-                            ? "현재 입력 기준"
-                            : "이전 입력 기준"}
-                      </Tag>
-                      {d.source === "legacy" && <Tag>이전 로컬 초안</Tag>}
+                    <span className="md-history-title">
+                      요구사항 v{d.generationNumber}
+                      {base?.id === d.id && (
+                        <span className="md-base-badge">✓ 협의 기준</span>
+                      )}
                     </span>
+                    <small>
+                      입력 자료 v{d.generationNumber} · {dotDate(d.createdAt)}
+                    </small>
                   </button>
                 ))}
               </div>
-              {doc && (
-                <div className="requirement-detail">
-                  <div className="document-meta">
-                    <b>
-                      생성 {doc.generationNumber} · 입력 v{doc.inputRevision}
-                    </b>
-                    <small>문서 ID: {doc.id}</small>
-                  </div>
-                  <pre>{doc.markdown}</pre>
-                  <div className="document-actions">
-                    <button
-                      onClick={() =>
-                        downloadMarkdown(
-                          doc.inputSnapshot.title,
-                          `요구사항-생성${doc.generationNumber}-${doc.id.slice(0, 8)}`,
-                          doc.inputRevision,
-                          doc.markdown,
-                        )
-                      }
-                    >
-                      <Download size={14} />
-                      요구사항 MD 다운로드
-                    </button>
-                    <button
-                      className="primary"
-                      disabled={
-                        !saved ||
-                        applying ||
-                        r.attachments.some((a) => a.uploadStatus !== "uploaded")
-                      }
-                      onClick={() => void applyDocument()}
-                    >
-                      <Check size={14} />이 문서로 협의하기
-                    </button>
-                  </div>
-                  {applyError && (
-                    <p role="alert" className="inline-error">
-                      {applyError}
-                    </p>
-                  )}
-                  {doc.inputRevision !== r.inputRevision && (
-                    <p className="panel-note">
-                      이전 입력 기준의 문서입니다. 이 문서로 협의하기를 선택하면 해당 MD를 확정·분석 기준으로 사용할 수 있습니다.
-                    </p>
-                  )}
-                  <small>
-                    목록에서 문서를 보는 것만으로 협의·확정 기준은 바뀌지
-                    않습니다.
-                  </small>
-                </div>
-              )}
-            </>
-          ) : (
-            <Empty>
-              생성된 요구사항이 없습니다.
-              <br />
-              자료를 입력하고 요구사항 생성을 눌러주세요.
-            </Empty>
-          )}
-        </section>
-      </div>
-      <SystemMockPanel r={r} update={update} saved={saved} />
-      <RequirementConfirmationPanel {...props} />
+            </details>
+            <DocumentSources key={doc.id} doc={doc} />
+          </div>
+        </div>
+      ) : (
+        <Empty>
+          생성된 문서가 없습니다. 자료를 넣고 요구사항을 정리해주세요.
+        </Empty>
+      )}
+      <StepFooter
+        back={{
+          label: "‹ 쇳물 녹이기",
+          onClick: () => go("input?view=materials"),
+        }}
+        nextText={{
+          label: "탕도 살피기로 건너뛰기 ›",
+          title:
+            "화면 변경이 없거나, 이미 확정된 화면이 있을 때 건너뛸 수 있어요",
+          disabled: !saved || !!props.busy || !hasAppliedRequirement(r),
+          onClick: () => props.confirmAndAnalyze({ skipPreview: true }),
+        }}
+        next={{
+          label: "미리 붓기 ›",
+          disabled: !saved || !hasAppliedRequirement(r),
+          onClick: () => go("input?view=preview"),
+        }}
+        reason={
+          !saved
+            ? "저장이 완료되면 진행할 수 있어요"
+            : "기준 MD를 선택하면 진행할 수 있어요"
+        }
+      />
+      {toast && (
+        <div className="md-toast" role="status">
+          <span>v{toast.version}을 협의 기준으로 정했어요</span>
+          <button onClick={() => void undoSelection()}>되돌리기</button>
+        </div>
+      )}
     </>
   );
 }

@@ -1,31 +1,13 @@
-import { useState } from "react";
 import {
   activeConfirmation,
-  canConfirmRequirement,
-  confirmRequirement,
   hasConfirmedRequirement,
   appliedDocument,
 } from "../domain/types";
 import { Tag } from "../components/shared";
 import type { WorkspaceProps } from "./workspace";
-export function RequirementConfirmationPanel({
-  r,
-  update,
-  saved,
-  go,
-}: WorkspaceProps) {
-  const [error, setError] = useState("");
+export function RequirementConfirmationPanel({ r }: WorkspaceProps) {
   const c = activeConfirmation(r),
     doc = appliedDocument(r);
-  function confirm() {
-    try {
-      update((latest) => confirmRequirement(latest));
-      setError("");
-      go("analysis");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "요구사항 확정 실패");
-    }
-  }
   return (
     <section className="panel requirement-confirmation" id="confirmation">
       <div className="panel-heading">
@@ -38,32 +20,16 @@ export function RequirementConfirmationPanel({
       </div>
       <div className="panel-content">
         <p>
-          레거시 분석에는 확정한 요구사항 MD 파일 하나만 전달합니다. 협의한
-          변경사항은 요구사항 MD에 반영한 후 확정해주세요.
+          확정한 요구사항 MD와 선택한 코드 ZIP을 분석 서버로 전달합니다. Mock
+          생성은 선택 사항입니다. 협의한 내용은 MD에 반영한 후 확정해주세요.
         </p>
         <div className="confirmation-summary">
           <b>분석에 사용할 요구사항 MD</b>
           <p>
             {doc
-              ? `MD 생성 ${doc.generationNumber} · 입력 v${doc.inputRevision}`
+              ? `요구사항 v${doc.generationNumber} · 입력 자료 v${doc.generationNumber}`
               : "협의 기준 MD를 선택해주세요."}
           </p>
-        </div>
-        {error && (
-          <p className="inline-error" role="alert">
-            {error}
-          </p>
-        )}
-        <div className="document-actions">
-          <button
-            className="primary"
-            disabled={!saved || !canConfirmRequirement(r)}
-            onClick={confirm}
-          >
-            {hasConfirmedRequirement(r)
-              ? "확정된 요구사항으로 분석하기"
-              : "요구사항 확정 후 분석하기"}
-          </button>
         </div>
         {c && (
           <p>

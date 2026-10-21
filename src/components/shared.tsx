@@ -3,6 +3,69 @@ import { StaticHtmlFrame } from "./StaticHtmlFrame";
 import { Download, Search, FileText, Check, Monitor } from "lucide-react";
 import { materials } from "../mocks/download-center";
 import { downloadMarkdown } from "../utils/downloads";
+/** 탕도 살피기 lane badge (UI / Logic / API / DB / Permission). */
+export function LaneBadge({
+  type,
+  compact = false,
+}: {
+  type: string;
+  compact?: boolean;
+}) {
+  return (
+    <span
+      className={`type-icon type-${type}${compact ? " type-icon-compact" : ""}`}
+    >
+      {type}
+    </span>
+  );
+}
+export interface UnderlineTab {
+  id: string;
+  label: string;
+  disabled?: boolean;
+}
+/** Shared underline tab bar used across the app (no box, orange underline on the selected tab). */
+export function UnderlineTabs({
+  tabs,
+  value,
+  onChange,
+  label,
+  idPrefix,
+  className = "",
+}: {
+  tabs: readonly UnderlineTab[];
+  value: string;
+  onChange: (id: string) => void;
+  label: string;
+  /** When set, tabs get `${idPrefix}tab-<id>` ids and point at `${idPrefix}panel-<id>`. */
+  idPrefix?: string;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`underline-tabs ${className}`.trim()}
+      role="tablist"
+      aria-label={label}
+    >
+      {tabs.map((t) => (
+        <button
+          key={t.id}
+          className="underline-tab"
+          role="tab"
+          id={idPrefix !== undefined ? `${idPrefix}tab-${t.id}` : undefined}
+          aria-controls={
+            idPrefix !== undefined ? `${idPrefix}panel-${t.id}` : undefined
+          }
+          aria-selected={value === t.id}
+          disabled={t.disabled}
+          onClick={() => onChange(t.id)}
+        >
+          {t.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 export function DocumentPanel({
   title,
   markdown,

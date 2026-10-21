@@ -16,3 +16,6 @@ dist/
 # OMC local session/state data
 /.omc/
 
+
+# Local browser verification artifacts
+/test-results/

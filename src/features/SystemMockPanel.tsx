@@ -10,6 +10,7 @@ import { systemMockService } from "../services/systemMocks";
 import { Tag, Empty } from "../components/shared";
 import { communicationHtml } from "../utils/communicationHtml";
 import { downloadHtml } from "../utils/downloads";
+import { StaticHtmlFrame } from "../components/StaticHtmlFrame";
 export function SystemMockPanel({
   r,
   update,
@@ -19,13 +20,15 @@ export function SystemMockPanel({
   update: (fn: (r: WorkRequest) => WorkRequest) => void;
   saved: boolean;
 }) {
-  const html = communicationHtml();
   const doc = appliedDocument(r);
   const job = r.mockJobs.find(
-    (j) => j.status === "queued" || j.status === "running",
+    (j) =>
+      (j.status === "queued" || j.status === "running") &&
+      j.requirementDocumentId === doc?.id &&
+      j.legacyVersion === r.legacyVersion,
   );
   useEffect(() => {
-    if (!job || !saved) return;
+    if (!job || job.error || !saved) return;
     let cancelled = false;
     const timer = setTimeout(async () => {
       try {
@@ -56,7 +59,6 @@ export function SystemMockPanel({
           update((latest) =>
             mergeMockJob(latest, {
               ...job,
-              status: "failed",
               error: e instanceof Error ? e.message : "Mock 생성 실패",
             }),
           );
@@ -72,6 +74,8 @@ export function SystemMockPanel({
       m.requirementDocumentId === doc?.id &&
       m.legacyVersion === r.legacyVersion,
   );
+  const html =
+    displayed?.source === "server" ? displayed.html || "" : communicationHtml();
   function generate() {
     if (!doc || job || !saved) return;
     const key = crypto.randomUUID();
@@ -97,9 +101,7 @@ export function SystemMockPanel({
         <div className="mock-toolbar">
           <button
             className="primary"
-            disabled={
-              !doc || !hasAppliedRequirement(r) || !!job || !saved
-            }
+            disabled={!doc || !hasAppliedRequirement(r) || !!job || !saved}
             onClick={generate}
           >
             {job ? "예상 화면 생성 중…" : "시스템 적용 Mock 생성"}
@@ -111,6 +113,20 @@ export function SystemMockPanel({
             HTML 코드 다운로드
           </button>
         </div>
+        {job?.error && (
+          <p role="alert">
+            {job.error}{" "}
+            <button
+              onClick={() =>
+                update((latest) =>
+                  mergeMockJob(latest, { ...job, error: undefined }),
+                )
+              }
+            >
+              같은 작업 다시 확인
+            </button>
+          </p>
+        )}
         {r.mockJobs
           .filter((j) => j.status === "failed")
           .map((j) => (
@@ -118,7 +134,15 @@ export function SystemMockPanel({
               {j.error} · 다시 생성해주세요.
             </p>
           ))}
-        {displayed ? (
+        {displayed?.source === "server" ? (
+          <>
+            <p className="panel-note">
+              서버 생성 HTML · 검증된 동작 실행 서버 연결 전에는 정적 미리보기로
+              표시합니다.
+            </p>
+            <StaticHtmlFrame html={html} />
+          </>
+        ) : displayed ? (
           <iframe
             className="communication-preview"
             title="시스템 적용 예상 화면 미리보기"
