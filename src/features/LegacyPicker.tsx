@@ -72,7 +72,6 @@ export function LegacyPicker({ r, edit, go, saved }: WorkspaceProps) {
         >
           <span>
             <b>다운로드 센터 · 시연용 틀</b>
-            <small>실제 코드 ZIP 없이 로컬 시연합니다.</small>
           </span>
           <LegacyCheck checked={r.legacyVersion === "DEMO-2026.10"} />
         </button>
