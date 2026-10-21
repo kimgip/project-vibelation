@@ -12,7 +12,7 @@
         "dueDate": "",
         "revision": 2,
         "inputRevision": 1,
-        "legacyVersion": "DEMO-2026.10",
+        "legacyVersion": "MOCK-MYPOSCODX",
         "agreement": "",
         "opinion": "",
         "attachments": [],
@@ -20,7 +20,7 @@
           {
             "id": "md-sample-download",
             "generationId": "generation-sample-download",
-            "generationNumber": 1,
+            "generationNumber": 2,
             "inputRevision": 1,
             "inputSnapshot": {
               "requestId": "history-sample-download",
@@ -52,7 +52,7 @@
             "documentSnapshot": {
               "id": "md-sample-download",
               "generationId": "generation-sample-download",
-              "generationNumber": 1,
+              "generationNumber": 2,
               "inputRevision": 1,
               "inputSnapshot": {
                 "requestId": "history-sample-download",
@@ -90,11 +90,104 @@
           "basis": {
             "requestId": "history-sample-download",
             "revision": 2,
-            "legacyVersion": "DEMO-2026.10",
+            "legacyVersion": "MOCK-MYPOSCODX",
             "requirementDocumentId": "md-sample-download",
             "confirmationId": "confirmation-sample-download"
           },
           "markdown": "# 다운로드 센터 다중 선택 개선 검토 리포트\n\n## 검토 결론\n요구사항과 레거시 변경 범위를 검토했습니다.\n\n## 예상 변경\n- 화면 상태 처리 개선\n- 입력 검증 및 결과 안내 추가\n\n## 확인 사항\n- [x] 변경 범위 확인\n- [x] 공수 검토\n\n> 서버 미연결 Mock 이력입니다."
+        },
+        "analysis": {
+          "id": "analysis-history-sample-download",
+          "basis": {
+            "requestId": "history-sample-download",
+            "revision": 2,
+            "legacyVersion": "MOCK-MYPOSCODX",
+            "requirementDocumentId": "md-sample-download",
+            "confirmationId": "confirmation-sample-download"
+          },
+          "source": "mock",
+          "impacts": [
+            {
+              "id": "ui-1",
+              "type": "UI",
+              "name": "UI 자원 1",
+              "path": "",
+              "current": "등록 당시 검토 자원",
+              "proposed": "협의 요구사항 반영",
+              "reason": "과거 검토 이력의 시연용 자원",
+              "days": 0
+            },
+            {
+              "id": "ui-2",
+              "type": "UI",
+              "name": "UI 자원 2",
+              "path": "",
+              "current": "등록 당시 검토 자원",
+              "proposed": "협의 요구사항 반영",
+              "reason": "과거 검토 이력의 시연용 자원",
+              "days": 0
+            },
+            {
+              "id": "logic-1",
+              "type": "Logic",
+              "name": "Logic 자원 1",
+              "path": "",
+              "current": "등록 당시 검토 자원",
+              "proposed": "협의 요구사항 반영",
+              "reason": "과거 검토 이력의 시연용 자원",
+              "days": 0
+            },
+            {
+              "id": "logic-2",
+              "type": "Logic",
+              "name": "Logic 자원 2",
+              "path": "",
+              "current": "등록 당시 검토 자원",
+              "proposed": "협의 요구사항 반영",
+              "reason": "과거 검토 이력의 시연용 자원",
+              "days": 0
+            },
+            {
+              "id": "logic-3",
+              "type": "Logic",
+              "name": "Logic 자원 3",
+              "path": "",
+              "current": "등록 당시 검토 자원",
+              "proposed": "협의 요구사항 반영",
+              "reason": "과거 검토 이력의 시연용 자원",
+              "days": 0
+            },
+            {
+              "id": "api-1",
+              "type": "API",
+              "name": "API 자원 1",
+              "path": "",
+              "current": "등록 당시 검토 자원",
+              "proposed": "협의 요구사항 반영",
+              "reason": "과거 검토 이력의 시연용 자원",
+              "days": 0
+            },
+            {
+              "id": "permission-1",
+              "type": "Permission",
+              "name": "Permission 자원 1",
+              "path": "",
+              "current": "등록 당시 검토 자원",
+              "proposed": "협의 요구사항 반영",
+              "reason": "과거 검토 이력의 시연용 자원",
+              "days": 0
+            },
+            {
+              "id": "permission-2",
+              "type": "Permission",
+              "name": "Permission 자원 2",
+              "path": "",
+              "current": "등록 당시 검토 자원",
+              "proposed": "협의 요구사항 반영",
+              "reason": "과거 검토 이력의 시연용 자원",
+              "days": 0
+            }
+          ]
         }
       }
     },
@@ -110,7 +203,7 @@
         "dueDate": "",
         "revision": 2,
         "inputRevision": 1,
-        "legacyVersion": "DEMO-2026.10",
+        "legacyVersion": "MOCK-MYPOSCODX",
         "agreement": "",
         "opinion": "",
         "attachments": [],
@@ -188,11 +281,64 @@
           "basis": {
             "requestId": "history-sample-search",
             "revision": 2,
-            "legacyVersion": "DEMO-2026.10",
+            "legacyVersion": "MOCK-MYPOSCODX",
             "requirementDocumentId": "md-sample-search",
             "confirmationId": "confirmation-sample-search"
           },
           "markdown": "# 고객지원 자료 검색 개선 검토 리포트\n\n## 검토 결론\n요구사항과 레거시 변경 범위를 검토했습니다.\n\n## 예상 변경\n- 화면 상태 처리 개선\n- 입력 검증 및 결과 안내 추가\n\n## 확인 사항\n- [x] 변경 범위 확인\n- [x] 공수 검토\n\n> 서버 미연결 Mock 이력입니다."
+        },
+        "analysis": {
+          "id": "analysis-history-sample-search",
+          "basis": {
+            "requestId": "history-sample-search",
+            "revision": 2,
+            "legacyVersion": "MOCK-MYPOSCODX",
+            "requirementDocumentId": "md-sample-search",
+            "confirmationId": "confirmation-sample-search"
+          },
+          "source": "mock",
+          "impacts": [
+            {
+              "id": "ui-1",
+              "type": "UI",
+              "name": "UI 자원 1",
+              "path": "",
+              "current": "등록 당시 검토 자원",
+              "proposed": "협의 요구사항 반영",
+              "reason": "과거 검토 이력의 시연용 자원",
+              "days": 0
+            },
+            {
+              "id": "ui-2",
+              "type": "UI",
+              "name": "UI 자원 2",
+              "path": "",
+              "current": "등록 당시 검토 자원",
+              "proposed": "협의 요구사항 반영",
+              "reason": "과거 검토 이력의 시연용 자원",
+              "days": 0
+            },
+            {
+              "id": "ui-3",
+              "type": "UI",
+              "name": "UI 자원 3",
+              "path": "",
+              "current": "등록 당시 검토 자원",
+              "proposed": "협의 요구사항 반영",
+              "reason": "과거 검토 이력의 시연용 자원",
+              "days": 0
+            },
+            {
+              "id": "api-1",
+              "type": "API",
+              "name": "API 자원 1",
+              "path": "",
+              "current": "등록 당시 검토 자원",
+              "proposed": "협의 요구사항 반영",
+              "reason": "과거 검토 이력의 시연용 자원",
+              "days": 0
+            }
+          ]
         }
       }
     },
@@ -208,7 +354,7 @@
         "dueDate": "",
         "revision": 2,
         "inputRevision": 1,
-        "legacyVersion": "DEMO-2026.10",
+        "legacyVersion": "MOCK-MYPOSCODX",
         "agreement": "",
         "opinion": "",
         "attachments": [],
@@ -216,7 +362,7 @@
           {
             "id": "md-sample-partner",
             "generationId": "generation-sample-partner",
-            "generationNumber": 1,
+            "generationNumber": 3,
             "inputRevision": 1,
             "inputSnapshot": {
               "requestId": "history-sample-partner",
@@ -248,7 +394,7 @@
             "documentSnapshot": {
               "id": "md-sample-partner",
               "generationId": "generation-sample-partner",
-              "generationNumber": 1,
+              "generationNumber": 3,
               "inputRevision": 1,
               "inputSnapshot": {
                 "requestId": "history-sample-partner",
@@ -286,11 +432,84 @@
           "basis": {
             "requestId": "history-sample-partner",
             "revision": 2,
-            "legacyVersion": "DEMO-2026.10",
+            "legacyVersion": "MOCK-MYPOSCODX",
             "requirementDocumentId": "md-sample-partner",
             "confirmationId": "confirmation-sample-partner"
           },
           "markdown": "# 파트너 포털 자료 일괄 다운로드 검토 리포트\n\n## 검토 결론\n요구사항과 레거시 변경 범위를 검토했습니다.\n\n## 예상 변경\n- 화면 상태 처리 개선\n- 입력 검증 및 결과 안내 추가\n\n## 확인 사항\n- [x] 변경 범위 확인\n- [x] 공수 검토\n\n> 서버 미연결 Mock 이력입니다."
+        },
+        "analysis": {
+          "id": "analysis-history-sample-partner",
+          "basis": {
+            "requestId": "history-sample-partner",
+            "revision": 2,
+            "legacyVersion": "MOCK-MYPOSCODX",
+            "requirementDocumentId": "md-sample-partner",
+            "confirmationId": "confirmation-sample-partner"
+          },
+          "source": "mock",
+          "impacts": [
+            {
+              "id": "ui-1",
+              "type": "UI",
+              "name": "UI 자원 1",
+              "path": "",
+              "current": "등록 당시 검토 자원",
+              "proposed": "협의 요구사항 반영",
+              "reason": "과거 검토 이력의 시연용 자원",
+              "days": 0
+            },
+            {
+              "id": "ui-2",
+              "type": "UI",
+              "name": "UI 자원 2",
+              "path": "",
+              "current": "등록 당시 검토 자원",
+              "proposed": "협의 요구사항 반영",
+              "reason": "과거 검토 이력의 시연용 자원",
+              "days": 0
+            },
+            {
+              "id": "ui-3",
+              "type": "UI",
+              "name": "UI 자원 3",
+              "path": "",
+              "current": "등록 당시 검토 자원",
+              "proposed": "협의 요구사항 반영",
+              "reason": "과거 검토 이력의 시연용 자원",
+              "days": 0
+            },
+            {
+              "id": "logic-1",
+              "type": "Logic",
+              "name": "Logic 자원 1",
+              "path": "",
+              "current": "등록 당시 검토 자원",
+              "proposed": "협의 요구사항 반영",
+              "reason": "과거 검토 이력의 시연용 자원",
+              "days": 0
+            },
+            {
+              "id": "logic-2",
+              "type": "Logic",
+              "name": "Logic 자원 2",
+              "path": "",
+              "current": "등록 당시 검토 자원",
+              "proposed": "협의 요구사항 반영",
+              "reason": "과거 검토 이력의 시연용 자원",
+              "days": 0
+            },
+            {
+              "id": "api-1",
+              "type": "API",
+              "name": "API 자원 1",
+              "path": "",
+              "current": "등록 당시 검토 자원",
+              "proposed": "협의 요구사항 반영",
+              "reason": "과거 검토 이력의 시연용 자원",
+              "days": 0
+            }
+          ]
         }
       }
     }
