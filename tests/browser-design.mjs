@@ -53,7 +53,9 @@ try {
   await page.reload();
   await page.locator('iframe[title="시스템 적용 예상 화면 미리보기"]').waitFor();
   await page.getByRole("button", { name: "탕도 살피기 ›", exact: true }).click();
-  await page.locator(".resource").first().waitFor();
+  await page.getByRole("progressbar",{name:"에이전트 응답 대기"}).waitFor();
+  await page.getByRole("progressbar", {name:"에이전트 응답 대기"}).waitFor({state:"hidden"});
+  assert.equal(await page.locator(".resource").count(),0);
   await page.locator('.graph-node').first().waitFor();
   assert.equal(await page.locator('.graph-node').count(),17);
   await page.locator('.graph-node').first().click();
@@ -74,7 +76,9 @@ try {
 
   assert.equal(await page.getByText(/다운로드 센터 고정 시나리오/).count(), 0);
   await page.getByRole("button", { name: "붓기 준비 완료 ›", exact: true }).click();
+  await page.getByRole("progressbar",{name:"에이전트 응답 대기"}).waitFor();
   await page.getByRole("heading", { name: "[붓기 준비 완료]", exact: true }).waitFor();
+  assert.equal(await page.getByText(/예상 공수|총 \d+일/).count(),0);
   assert.deepEqual(await page.getByRole("tab").allTextContents(), ["검토 요약", "영향 범위", "유사사례"]);
   assert.equal(await page.getByRole("checkbox").count(), 0);
   assert.equal(await page.getByRole("button", { name: /준비서 내려받기|리포트 다시 생성/ }).count(), 0);

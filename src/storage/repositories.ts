@@ -205,10 +205,10 @@ function validRequest(v: unknown): v is WorkRequest {
               "proposed",
               "reason",
             ].every((k) => typeof i[k] === "string") &&
-            typeof i.days === "number",
+            (i.days === undefined || typeof i.days === "number"),
         ) ||
         !["totalDays", "durationDays", "bufferDays"].every(
-          (k) => typeof a[k] === "number",
+          (k) => (a[k] === undefined || typeof a[k] === "number"),
         ))
     )
       return false;

@@ -109,7 +109,7 @@ function HistoryContent({
     <>
       <ScreenTitle
         title="[검토 이력]"
-        description="붓기 준비를 마친 요청이 모여 있어요. 비슷한 요청이 오면 지난 검토의 범위와 공수를 참고하세요."
+        description="붓기 준비를 마친 요청이 모여 있어요. 비슷한 요청이 오면 지난 검토의 영향 범위를 참고하세요."
       />
       <div className="history-toolbar">
         <h2>
@@ -132,11 +132,8 @@ function HistoryContent({
             const doc = appliedDocument(r);
             const impacts = r.analysis?.impacts || [];
             const lanes = laneOrder.filter((lane) =>
-              impacts.some((i) => i.type === lane),
+              (r.analysis?.impactGraph?.nodes || impacts).some((i) => ("resourceType" in i ? i.resourceType : i.type) === lane),
             );
-            const total =
-              Math.round(impacts.reduce((sum, i) => sum + i.days, 0) * 10) /
-              10;
             const meta = [
               legacy,
               doc && `협의 기준 ${doc.generationNumber}차안`,
@@ -160,7 +157,7 @@ function HistoryContent({
                         <LaneBadge key={lane} type={lane} compact />
                       ))}
                     </span>
-                    {impacts.length > 0 && <b>총 {total}일</b>}
+
                   </span>
                 )}
               </Link>

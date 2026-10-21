@@ -99,7 +99,7 @@ export const mockService: VibelationService = {
         requirements: agreementMarkdown(r),
         impacts: r
           .analysis!.impacts.map((i) =>
-            renderMockTemplate(reportFixture.impactTemplate, { ...i }),
+            renderMockTemplate(reportFixture.impactTemplate, { ...i, days: i.days ?? 0 }),
           )
           .join("\n"),
       }),
@@ -161,12 +161,9 @@ export async function analyzeRequirements(
           : undefined);
       if (
         !result ||
-        !Array.isArray(result.impacts) ||
-        ![result.totalDays, result.durationDays, result.bufferDays].every(
-          (v) => typeof v === "number" && Number.isFinite(v),
-        ) ||
+        (result.impacts !== undefined && !Array.isArray(result.impacts)) ||
         typeof result.id !== "string" ||
-        !result.impacts.every(
+        !(result.impacts || []).every(
           (v: Record<string, unknown>) =>
             typeof v?.id === "string" &&
             ["UI", "Logic", "API", "DB", "Permission"].includes(
@@ -174,8 +171,7 @@ export async function analyzeRequirements(
             ) &&
             ["name", "path", "current", "proposed", "reason"].every(
               (k) => typeof v[k] === "string",
-            ) &&
-            typeof v.days === "number",
+            ),
         )
       )
         throw new Error("서버 분석 결과 형식이 올바르지 않습니다.");
@@ -192,8 +188,9 @@ export async function analyzeRequirements(
       const hash = [...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))].map(n => n.toString(16).padStart(2, "0")).join("");
       if (bytes.byteLength !== artifact.sizeBytes || hash !== artifact.sha256) throw new Error("분석 HTML 파일 크기 또는 해시가 일치하지 않습니다.");
       localStorage.removeItem(ticketKey);
-      const graphError = result.impactGraph === undefined ? null : validateImpactGraph(result.impactGraph, result.id, input.sources);
-      return { ...result, impactGraph: graphError ? undefined : result.impactGraph, impactGraphError: graphError || undefined, basis: input.basis, source: "server" };
+      const graphError = validateImpactGraph(result.impactGraph, result.id, input.sources);
+      if (graphError) throw new Error(`영향도 지도 응답을 확인해주세요 (${graphError}). 다시 분석해주세요.`);
+      return { ...result, impacts: result.impacts || [], impactGraph: graphError ? undefined : result.impactGraph, impactGraphError: graphError || undefined, basis: input.basis, source: "server" };
     }
     if (
       !["queued", "running"].includes(job.status) ||

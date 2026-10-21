@@ -23,7 +23,7 @@ export interface Impact {
   current: string;
   proposed: string;
   reason: string;
-  days: number;
+  days?: number;
 }
 export interface Analysis {
   impactGraph?: ImpactGraph;
@@ -35,9 +35,9 @@ export interface Analysis {
   id?: string;
   basis: Basis;
   impacts: Impact[];
-  totalDays: number;
-  durationDays: number;
-  bufferDays: number;
+  totalDays?: number;
+  durationDays?: number;
+  bufferDays?: number;
 }
 export interface Attachment {
   id?: string;

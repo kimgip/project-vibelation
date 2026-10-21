@@ -7,7 +7,7 @@
 | `download-center.json`     | 공통 샘플                       | 입력 샘플(sample), 유사 사례(cases), 자료명(materials)                    |
 | `step01-requirements.json` | Step 01 _ 요구사항 문서 생성    | MD 양식(markdownTemplate), 문서 형식 버전                                 |
 | `step01-system-mock.json`  | Step 01 _ 시스템 적용 예상 화면 | 시연용 HTML(html), 내부 응답 메타데이터                                   |
-| `step02-analysis.json`     | Step 02 _ 레거시 분석           | 영향 자원(impacts), 공수(totalDays), 기간(durationDays), 버퍼(bufferDays) |
+| `step02-analysis.json`     | Step 02 _ 레거시 분석           | 구버전 호환 자원(impacts), 공수 없음 |
 | `step03-report.json`       | Step 03 _ 최종 검토 리포트      | 리포트 양식(markdownTemplate), 영향 자원별 표현(impactTemplate)           |
 
 `step01-system-mock.json`의 html은 표시 화면과 다운로드에 공통 사용합니다. 독립 HTML의 자체 자료 목록은 이 html 안에 있으며 `download-center.json`의 materials는 기존 React 시연 화면용입니다. HTML은 검토한 로컬 시연 코드만 작성하고 기존 CSP를 유지합니다.
@@ -27,3 +27,5 @@ JSON 문자열의 줄바꿈은 `\n`, 큰따옴표는 `\"`로 작성합니다. �
 ## 과거 검토 이력 Mock
 
 `history.json`의 `items`는 과거 검토 이력 목록·상세 조회용 등록 스냅샷입니다. `src/services/history.ts`의 `createMockHistoryService`가 비동기로 목록(`list`)과 상세(`get`)를 반환합니다. 서버 HTTP 요청은 하지 않습니다. 화면에는 JSON 샘플과 직접 등록한 로컬 이력을 함께 표시하고 같은 ID는 로컬 이력을 우선합니다. 샘플은 localStorage에 저장하지 않습니다. JSON을 수정한 후 이력 페이지를 다시 열면 반영됩니다. 데이터의 `request`는 등록 당시 스냅샷이므로 요구사항·확정·리포트 ID의 연결 관계와 기존 필드 타입을 유지해주세요.
+
+현재 영향 범위는 step02-impact-graph.json의 지도 데이터로 표시합니다. 신규 분석 응답은 impactGraph가 필수이며, 공수 필드는 생성/표시하지 않습니다.

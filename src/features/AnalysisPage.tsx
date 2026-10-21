@@ -1,5 +1,5 @@
 import { ImpactGraph } from "../components/ImpactGraph";
-import { useState } from "react";
+
 import {
   hasConfirmedRequirement,
   isCurrent,
@@ -20,9 +20,7 @@ export function AnalysisPage({
   saved,
   go,
 }: WorkspaceProps) {
-  const [selected, setSelected] = useState("");
   const resources = isCurrent(r, r.analysis) ? r.analysis?.impacts || [] : [];
-  const item = resources.find((i) => i.id === selected) || resources[0];
   return (
     <>
       <ScreenTitle
@@ -44,65 +42,7 @@ export function AnalysisPage({
       </div>
       {isCurrent(r, r.analysis) && r.analysis?.impactGraphError && <p role="alert">영향도 지도 데이터 오류 ({r.analysis.impactGraphError}). 자원 상세를 확인해주세요.</p>}
       {isCurrent(r, r.analysis) && r.analysis?.impactGraph && <ImpactGraph graph={r.analysis.impactGraph} analysisId={r.analysis.id} />}
-      {item ? (
-        <div className="analysis-grid">
-          <section className="panel">
-            <div className="panel-heading">
-              <span>수정 · 검토 자원</span>
-              <Tag>{resources.length}개 후보</Tag>
-            </div>
-            {resources.map((resource) => (
-              <button
-                className={`resource ${item.id === resource.id ? "selected" : ""}`}
-                key={resource.id}
-                aria-pressed={item.id === resource.id}
-                onClick={() => setSelected(resource.id)}
-              >
-                <LaneBadge type={resource.type} />
-                <span>
-                  <b>{resource.name}</b>
-                  <small>{resource.path}</small>
-                </span>
-                <span aria-hidden="true">›</span>
-              </button>
-            ))}
-          </section>
-          <section className="panel">
-            <div className="panel-heading">
-              <span>상세보기</span>
-              <Tag>변경 제안</Tag>
-            </div>
-            <div className="resource-detail">
-              <code>{item.path}</code>
-              <div className="diff before">
-                <b>
-                  현재 구조
-                </b>
-                <p>{item.current}</p>
-              </div>
-              <div className="diff after">
-                <b>변경 방향</b>
-                <p>{item.proposed}</p>
-              </div>
-              <h3>연결 근거</h3>
-              <p>{item.reason || "제공된 근거 없음"}</p>
-              <h3>대상</h3>
-              <p>{item.name}</p>
-              <code>{item.path}</code>
-              <p>
-                <Tag>잠정 공수 {item.days}일</Tag>
-              </p>
-
-            </div>
-          </section>
-        </div>
-      ) : (
-        <Empty>
-          {busy === "analysis"
-            ? "확정한 요구사항과 코드 기준으로 분석 중입니다."
-            : "요구사항을 먼저 확정한 뒤 분석해주세요."}
-        </Empty>
-      )}
+      {!r.analysis?.impactGraph && <Empty>{busy === "analysis" ? "확정한 요구사항과 코드를 분석하고 있습니다." : "지도 데이터가 없습니다. 다시 분석해주세요."}</Empty>}
       <StepFooter
         back={{
           label: "‹ 미리 붓기",

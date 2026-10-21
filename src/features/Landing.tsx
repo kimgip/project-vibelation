@@ -42,7 +42,7 @@ const stages: [name: string, detail: string][] = [
   ["성분 보기", "요구사항으로 정리해 확인"],
   ["미리 붓기", "레거시와 맞춘 Mock-up 확인"],
   ["탕도 살피기", "화면·로직·API·DB 등 수정 범위를 확인"],
-  ["붓기 준비 완료", "합의·공수를 굳히기"],
+  ["붓기 준비 완료", "협의 내용을 확정하기"],
 ];
 export function Brand() {
   return (
@@ -160,7 +160,7 @@ export function Landing({
           </h1>
           <p>
           Teams 메시지, HTML 화면, PPT 기획서를 그대로 받아,
-            <br className="desktop-break" /> 우리 시스템에 맞춘 목업과 수정 범위, 공수까지 한 번에 정리해 드립니다.
+            <br className="desktop-break" /> 우리 시스템에 맞춘 목업과 영향 범위까지 한 번에 정리해 드립니다.
           </p>
         </div>
         <div className="landing-why">

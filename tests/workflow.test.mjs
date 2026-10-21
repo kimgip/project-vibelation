@@ -445,3 +445,13 @@ test("screen type changes require explicit reselection and invalidate prior resu
   assert.equal(hasAppliedRequirement(edited), false);
   assert.equal(canRegister(edited), false);
 });
+
+test("registration and reload no longer require effort data", () => {
+  storage.clear();
+  const r = prepared();
+  delete r.analysis.totalDays; delete r.analysis.durationDays; delete r.analysis.bufferDays;
+  r.analysis.impacts.forEach(i => delete i.days);
+  repository.saveRequest(r);
+  const item = repository.register(r);
+  assert.equal(repository.history()[0].id, item.id);
+});
