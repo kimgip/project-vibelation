@@ -208,28 +208,3 @@ export async function analyzeRequirements(
   );
 }
 export { sample };
-
-export async function generateReport(r: WorkRequest, signal: AbortSignal): Promise<Artifact> {
-  if (!serverMode) return mockService.report(r, signal);
-  if (!readyForReview(r) || !r.analysis?.analysisHtmlArtifact?.id) throw new Error("분석 HTML 파일이 필요합니다. 탕도 살피기에서 다시 분석해주세요.");
-  const body = { requestId: r.id, confirmationId: r.activeConfirmationId, analysisResultId: r.analysis.id, analysisHtmlArtifactId: r.analysis.analysisHtmlArtifact.id };
-  const ticketKey = `soetmul.report-job:${JSON.stringify(body)}`;
-  const ticket = JSON.parse(localStorage.getItem(ticketKey) || "null") || { key: crypto.randomUUID() };
-  localStorage.setItem(ticketKey, JSON.stringify(ticket));
-  let job = ticket.id ? await apiJson(`/report-jobs/${encodeURIComponent(ticket.id)}`, signal) : await apiJson("/review-reports", signal, jsonPost(body, ticket.key));
-  if (typeof job.id !== "string") throw new Error("리포트 작업 ID를 확인해주세요.");
-  ticket.id = job.id; localStorage.setItem(ticketKey, JSON.stringify(ticket));
-  for (let n = 0; n < 600; n++) {
-    if (job.status === "failed") { localStorage.removeItem(ticketKey); throw new Error(job.error?.message || job.error || "리포트 생성 실패"); }
-    if (job.status === "succeeded") {
-      const result = job.report || job.artifact || job.result || (job.reportId ? await apiJson(`/review-reports/${encodeURIComponent(job.reportId)}`, signal) : undefined);
-      if (!result || typeof result.markdown !== "string" || typeof result.id !== "string" || result.confirmationId !== r.activeConfirmationId || result.analysisResultId !== r.analysis.id || result.analysisHtmlArtifactId !== body.analysisHtmlArtifactId) throw new Error("리포트 산출물의 분석·확정 기준이 다릅니다.");
-      localStorage.removeItem(ticketKey);
-      return { ...result, analysisId: r.analysis.id, basis: basisOf(r) };
-    }
-    if (!["queued", "running"].includes(job.status)) throw new Error("리포트 작업 응답을 확인해주세요.");
-    await waitForPoll(signal);
-    job = await apiJson(`/report-jobs/${encodeURIComponent(job.id)}`, signal);
-  }
-  throw new Error("리포트 생성 대기 중입니다. 같은 작업을 다시 확인해주세요.");
-}

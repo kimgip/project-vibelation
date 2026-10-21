@@ -38,7 +38,7 @@ export function AnalysisPage({
         next={{
           label: "붓기 준비 완료 ›",
           disabled: !saved || !!busy || !readyForReview(r),
-          onClick: () => run("report"),
+          onClick: () => run("similarCaseAnalysis"),
         }}
         reason={
           !saved
@@ -46,7 +46,7 @@ export function AnalysisPage({
             : busy === "analysis"
               ? "분석이 끝나면 진행할 수 있어요"
               : busy
-                ? "리포트 생성이 끝나면 진행할 수 있어요"
+                ? "유사사례 분석이 끝나면 진행할 수 있어요"
                 : !hasConfirmedRequirement(r)
                   ? "요구사항을 확정하면 진행할 수 있어요"
                   : "분석 결과를 받으면 진행할 수 있어요"

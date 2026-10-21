@@ -31,8 +31,9 @@ export function createMockHistoryService(localItems: Registration[]): HistorySer
 
 /** Server mode uses only immutable registered snapshots, never local fixtures/current drafts. */
 export function registrationFromServer(row: Record<string, any>): Registration {
+  row = {...row, id: row.reportId || row.id};
   if (row.request && validRegistration(row)) return row;
-  const c = row.confirmationSnapshot, a = row.analysisSnapshot, p = row.reportSnapshot;
+  const c = row.confirmationSnapshot, a = row.analysisSnapshot, p = row.similarCaseAnalysisSnapshot || row.reportSnapshot;
   if (!c?.documentSnapshot || !a?.id || !p?.id || typeof c.documentSnapshot.markdown !== "string") throw new Error("등록 당시 산출물 스냅샷이 없습니다.");
   if ((c.requestId && c.requestId !== row.requestId) || (c.documentSnapshot.inputSnapshot && c.documentSnapshot.inputSnapshot.requestId !== row.requestId) || (a.confirmationId && a.confirmationId !== c.id) || (p.confirmationId && p.confirmationId !== c.id) || p.analysisResultId !== a.id) throw new Error("등록 산출물의 확정·분석 기준이 다릅니다.");
   const r = blankRequest();
@@ -44,15 +45,17 @@ export function registrationFromServer(row: Record<string, any>): Registration {
   r.selectedRequirementDocumentId = c.documentSnapshot.id;
   r.activeConfirmationId = c.id;
   const document = { ...c.documentSnapshot, source: "server" as const, inputSnapshot: c.documentSnapshot.inputSnapshot || { unavailable: true, requestId: r.id, inputRevision: c.inputRevision, title: r.title, text: "", html: "", attachmentIds: [], attachmentNames: [] } };
+  r.requirements = [document];
   const confirmation: RequirementConfirmation = { ...c, requestId: r.id, draftFingerprint: draftFingerprint(r), documentSnapshot: document, mockSnapshot: null, mockReviewed: null, agreementSnapshot: { scope: "", acceptanceCriteria: "", exclusions: "", unresolvedItems: "" } };
   r.confirmations = [confirmation]; r.requirements = [document]; r.requirementAppliedAtInputRevision = r.inputRevision;
   r.analysis = { ...a, source: "server", basis: basisOf(r) };
-  r.report = { ...p, analysisId: p.analysisResultId, basis: basisOf(r) };
+  if (row.similarCaseAnalysisSnapshot) r.similarCaseAnalysis = {id:p.id,analysisId:p.analysisResultId,basis:basisOf(r),status:p.similarCaseMap?.status || 'no_matches',source:'server',cases:(p.similarCaseMap?.cases || []).map((v:any)=>({historyId:v.historyId,title:v.title,reason:v.summary,difference:'',business:v.business?.score,resource:v.resource?.score,registeredAt:v.registeredAt}))};
+  else r.report = { ...p, analysisId: p.analysisResultId, basis: basisOf(r) };
   r.scopeReviewed = row.reviewChecks?.scopeReviewed === true;
   r.estimateReviewed = row.reviewChecks?.estimateReviewed === true;
-  return { id: row.id, key: row.id, registeredAt: row.registeredAt, request: r,
+  return { id: row.id, reportId: row.reportId || row.id, key: row.id, registeredAt: row.registeredAt, request: r,
     reviewSummarySnapshot: typeof row.reviewSummarySnapshot === "string" ? row.reviewSummarySnapshot : undefined,
-    similarCasesSnapshot: Array.isArray(row.similarCasesSnapshot) ? row.similarCasesSnapshot : undefined };
+    similarCasesSnapshot: Array.isArray(row.similarCasesSnapshot) ? row.similarCasesSnapshot : r.similarCaseAnalysis?.cases };
 }
 export function createHistoryService(localItems: Registration[]): HistoryService {
   if (!serverMode) return createMockHistoryService(localItems);

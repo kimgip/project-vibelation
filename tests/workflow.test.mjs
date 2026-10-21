@@ -79,6 +79,7 @@ const prepared = () => {
     basis,
     markdown: "검토",
   };
+  r.similarCaseAnalysis = {id:"sim-1",analysisId:"analysis-1",basis,cases:[],status:"no_matches",source:"mock"};
   r.scopeReviewed = true;
   r.estimateReviewed = true;
   return r;
@@ -436,7 +437,7 @@ test("registration no longer requires review checkboxes, but still rejects stale
   assert.equal(registration.request.scopeReviewed, false);
   assert.ok(registration.reviewSummarySnapshot);
   assert.ok(registration.similarCasesSnapshot);
-  assert.equal(canRegister({ ...r, report: { ...r.report, analysisId: "other-analysis" } }), false);
+  assert.equal(canRegister({ ...r, similarCaseAnalysis: { ...r.similarCaseAnalysis, analysisId: "other-analysis" } }), false);
 });
 test("screen type changes require explicit reselection and invalidate prior results", () => {
   const r = prepared();
@@ -455,3 +456,5 @@ test("registration and reload no longer require effort data", () => {
   const item = repository.register(r);
   assert.equal(repository.history()[0].id, item.id);
 });
+
+test("new registrations require similarity result rather than a generated report",()=>{storage.clear();const r=prepared();delete r.report;assert.equal(canRegister(r),true);const item=repository.register(r);assert.equal(item.request.report,undefined);assert.equal(item.request.similarCaseAnalysis.id,"sim-1");assert.equal(canRegister({...r,similarCaseAnalysis:undefined}),false);});

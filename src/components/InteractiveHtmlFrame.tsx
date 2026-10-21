@@ -14,6 +14,6 @@ function sourceDocument(html: string) {
 }
 
 export function InteractiveHtmlFrame({html}: {html:string}) {
-  const [source, setSource] = useState(() => sourceDocument(html)), [revision,setRevision] = useState(0);
-  return <div><button type="button" onClick={() => {setSource(sourceDocument(html));setRevision(v=>v+1);}}>미리보기 새로고침</button><p>JavaScript 동작 미리보기 · 외부 라이브러리와 서버 통신은 지원하지 않습니다.</p><iframe key={revision} title="입력 HTML 동작 미리보기" sandbox="allow-scripts" referrerPolicy="no-referrer" srcDoc={source} /></div>;
+  const [source] = useState(() => sourceDocument(html));
+  return <div><iframe title="입력 HTML 동작 미리보기" sandbox="allow-scripts" referrerPolicy="no-referrer" srcDoc={source} /></div>;
 }

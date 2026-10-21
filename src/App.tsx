@@ -19,7 +19,7 @@ export function App() {
   return (
     <div className="workflow-app">
       {!landing && <AppHeader requests={w.requests} start={() => w.create()} />}
-      {w.busy && <div className="agent-progress" role="status" aria-live="polite"><strong>{w.busy === "analysis" ? "코드 영향도를 분석하고 있어요" : w.busy === "report" ? "붓기 준비 자료를 정리하고 있어요" : w.busy === "confirm" ? "요구사항을 확정하고 있어요" : "응답을 기다리고 있어요"}</strong><progress aria-label="에이전트 응답 대기" /><span>처리가 완료되면 결과를 보여드립니다.</span></div>}
+      {w.busy && <div className="agent-progress" role="status" aria-live="polite"><strong>{w.busy === "analysis" ? "코드 영향도를 분석하고 있어요" : w.busy === "similarCaseAnalysis" ? "유사사례를 분석하고 있어요" : w.busy === "confirm" ? "요구사항을 확정하고 있어요" : "응답을 기다리고 있어요"}</strong><progress aria-label="에이전트 응답 대기" /><span>처리가 완료되면 결과를 보여드립니다.</span></div>}
       <main aria-busy={!!w.busy} className={landing ? "landing-main" : "workflow-main"}>
         {w.message && (
           <div className="workflow-notice" role="status">
@@ -88,12 +88,6 @@ export function App() {
               <Empty>새 쇳물을 시작하고 현업의 자료를 넣어주세요.</Empty>
             )}
           </>
-        )}
-        {!landing && (
-          <footer className="workflow-page-footer">
-            <b>쇳물</b>
-            <span>요구사항을 녹여, 기존 틀에 붓다</span>
-          </footer>
         )}
       </main>
     </div>

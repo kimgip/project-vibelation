@@ -19,6 +19,10 @@ export interface Basis {
   confirmationId?: string;
   screenType?: "new" | "modify";
 }
+export interface SimilarCaseAnalysis {
+  rawResult?: Record<string, unknown>;
+  id: string; analysisId: string; basis: Basis; cases: SimilarCase[]; status: "ready" | "no_matches" | "insufficient_data"; source: "mock" | "server";
+}
 export interface Artifact {
   id?: string;
   analysisId?: string;
@@ -137,10 +141,12 @@ export interface WorkRequest {
   analysis?: Analysis;
   systemMock?: { basis: Basis };
   report?: Artifact;
+  similarCaseAnalysis?: SimilarCaseAnalysis;
   scopeReviewed: boolean;
   estimateReviewed: boolean;
 }
 export interface Registration {
+  reportId?: string;
   reviewSummarySnapshot?: string;
   similarCasesSnapshot?: SimilarCase[];
   id: string;
@@ -190,10 +196,10 @@ export const readyForReview = (r: WorkRequest) =>
   hasConfirmedRequirement(r) && isCurrent(r, r.analysis);
 export const canRegister = (r: WorkRequest) =>
   readyForReview(r) &&
-  isCurrent(r, r.report) &&
+  isCurrent(r, r.similarCaseAnalysis) &&
   !!r.analysis?.id &&
-  !!r.report?.id &&
-  r.report.analysisId === r.analysis.id;
+  !!r.similarCaseAnalysis?.id &&
+  r.similarCaseAnalysis.analysisId === r.analysis.id;
 export function blankRequest(): WorkRequest {
   return {
     id: crypto.randomUUID(),
@@ -355,7 +361,7 @@ export function mergeGeneration(
 }
 export function statusOf(r: WorkRequest) {
   return hasConfirmedRequirement(r)
-    ? isCurrent(r, r.report)
+    ? isCurrent(r, r.similarCaseAnalysis)
       ? "최종 검토"
       : isCurrent(r, r.analysis)
         ? "분석 완료"

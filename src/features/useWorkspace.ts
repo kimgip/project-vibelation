@@ -1,3 +1,4 @@
+import { analyzeSimilarCases } from "../services/similarCases";
 import { apiJson, jsonPost, serverMode } from "../services/api";
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -13,7 +14,6 @@ import {
 } from "../domain/types";
 import { repository, REQUEST_KEY, HISTORY_KEY } from "../storage/repositories";
 import {
-  generateReport,
   analysisInput,
   analyzeRequirements,
 } from "../services/contract";
@@ -189,11 +189,11 @@ export function useWorkspace() {
   }, [location.pathname, location.state]);
   const go = (target: string) =>
     r && navigate(`/requests/${r.id}/${target}`, { state: location.state });
-  async function run(kind: "analysis" | "report", confirmed?: WorkRequest) {
+  async function run(kind: "analysis" | "similarCaseAnalysis", confirmed?: WorkRequest) {
     if (!r || active.current || !saved || storageBlocked) return;
     const latest = confirmed || requestsRef.current.find((x) => x.id === r.id);
     if (!latest) return;
-    if (kind === "report" && isCurrent(latest, latest.report)) {
+    if (kind === "similarCaseAnalysis" && isCurrent(latest, latest.similarCaseAnalysis) && latest.similarCaseAnalysis?.analysisId === latest.analysis?.id) {
       navigate(`/requests/${latest.id}/review`);
       return;
     }
@@ -212,7 +212,7 @@ export function useWorkspace() {
               ),
               controller.signal,
             )
-          : await generateReport(snapshot, controller.signal);
+          : await analyzeSimilarCases(snapshot, controller.signal);
       const current = requestsRef.current.find((x) => x.id === snapshot.id);
       if (
         active.current?.id !== token ||
@@ -223,11 +223,11 @@ export function useWorkspace() {
       commit({
         ...current,
         [kind]: result,
-        ...(kind === "report" || kind === "analysis"
+        ...(kind === "similarCaseAnalysis" || kind === "analysis"
           ? { scopeReviewed: false, estimateReviewed: false }
           : {}),
       });
-      if (kind === "report") navigate(`/requests/${snapshot.id}/review`);
+      if (kind === "similarCaseAnalysis") navigate(`/requests/${snapshot.id}/review`);
     } catch (e) {
       if (!(e instanceof DOMException && e.name === "AbortError"))
         setMessage(
@@ -248,10 +248,10 @@ export function useWorkspace() {
       let registrationId: string | undefined;
       if (serverMode) {
         setBusy("register");
-        const key = `register:${r.id}:${r.activeConfirmationId}:${r.analysis?.id}:${r.report?.id}`;
-        const result = await apiJson("/review-registrations", new AbortController().signal, jsonPost({ requestId: r.id, confirmationId: r.activeConfirmationId, analysisResultId: r.analysis?.id, reportId: r.report?.id }, key));
-        if (typeof result.id !== "string") throw new Error("등록 결과 ID를 확인할 수 없습니다.");
-        registrationId = result.id;
+        const key = `register:${r.id}:${r.activeConfirmationId}:${r.analysis?.id}:${r.similarCaseAnalysis?.id}`;
+        const result = await apiJson("/review-registrations", new AbortController().signal, jsonPost({ requestId: r.id, confirmationId: r.activeConfirmationId, analysisResultId: r.analysis?.id, similarCaseAnalysisId: r.similarCaseAnalysis?.id }, key));
+        if (typeof result.reportId !== "string") throw new Error("등록 결과 ID를 확인할 수 없습니다.");
+        registrationId = result.reportId;
       }
       const result = repository.register(r, registrationId);
       setHistory(repository.history());
