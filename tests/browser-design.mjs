@@ -79,13 +79,17 @@ try {
   await page.locator('.graph-node').first().click();
   await page.getByRole('complementary', {name:'선택 자원 근거'}).getByRole('heading',{name:'코드 근거'}).waitFor();
   assert.equal(await page.locator('.graph-lines > path').count(),15);
-  const verifyFilter = page.getByRole('button',{name:/^확인만 \(/});
+  const verifyFilter = page.getByRole('button',{name:/^확인만/});
   await verifyFilter.click();
-  assert.ok(await page.locator('.graph-node').count()<19);
-  assert.equal(await page.getByRole('complementary',{name:'선택 자원 근거'}).getByText('노드를 선택하면 처리 방침과 연결 근거가 표시됩니다.').count(),1);
+  assert.equal(await page.locator('.graph-node').count(),19);
+  assert.ok(await page.locator('.graph-node.dim').count()>0);
+  assert.equal(await page.getByRole('complementary',{name:'선택 자원 근거'}).count(),0);
   await verifyFilter.click();
 
-  await page.getByRole('button',{name:'선택 해제',exact:true}).click();
+  assert.equal(await page.getByRole('button',{name:'선택 해제',exact:true}).count(),0);
+  assert.equal(await page.locator('.graph-notices').count(),0);
+  await page.locator('.graph-node').first().click();
+  await page.getByRole('button',{name:'상세 닫기',exact:true}).click();
   await page.screenshot({path:'test-results/impact-graph-desktop.png',fullPage:true});
   await page.setViewportSize({width:390,height:844});
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'graph mobile overflow');

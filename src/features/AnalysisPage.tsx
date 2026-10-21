@@ -20,7 +20,6 @@ export function AnalysisPage({
   saved,
   go,
 }: WorkspaceProps) {
-  const resources = isCurrent(r, r.analysis) ? r.analysis?.impacts || [] : [];
   return (
     <>
       <ScreenTitle
@@ -28,21 +27,9 @@ export function AnalysisPage({
         description="탕도는 쇳물이 틀 곳곳으로 흘러가는 길이에요. 요구사항이 닿는 화면·로직·API·DB를 찾아요."
       />
       <RequestContext r={r} edit={edit} />
-      <div className="workflow-notice">
-        <button
-          disabled={!saved || !!busy || !hasConfirmedRequirement(r)}
-          onClick={() => run("analysis")}
-        >
-          {busy === "analysis"
-            ? "분석 중…"
-            : resources.length
-              ? "다시 분석"
-              : "레거시 분석"}
-        </button>
-      </div>
       {isCurrent(r, r.analysis) && r.analysis?.impactGraphError && <p role="alert">영향도 지도 데이터 오류 ({r.analysis.impactGraphError}). 자원 상세를 확인해주세요.</p>}
       {isCurrent(r, r.analysis) && r.analysis?.impactGraph && <ImpactGraph graph={r.analysis.impactGraph} analysisId={r.analysis.id} />}
-      {!r.analysis?.impactGraph && <Empty>{busy === "analysis" ? "확정한 요구사항과 코드를 분석하고 있습니다." : "지도 데이터가 없습니다. 다시 분석해주세요."}</Empty>}
+      {!r.analysis?.impactGraph && <Empty>{busy === "analysis" ? "확정한 요구사항과 코드를 분석하고 있습니다." : "지도 데이터가 없습니다. 성분 보기에서 요구사항을 확인한 뒤 다시 진행해주세요."}</Empty>}
       <StepFooter
         back={{
           label: "‹ 미리 붓기",
