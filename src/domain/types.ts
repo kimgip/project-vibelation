@@ -209,7 +209,7 @@ export function blankRequest(): WorkRequest {
     dueDate: "",
     revision: 1,
     inputRevision: 1,
-    legacyVersion: "DEMO-2026.10",
+    legacyVersion: "",
     agreement: "",
     opinion: "",
     attachments: [],
