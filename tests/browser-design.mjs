@@ -22,6 +22,12 @@ try {
   // Add HTML and attachment through actual inputs.
   await page.getByText("+ 자료 추가", { exact: true }).click();
   await page.getByRole("button", { name: /HTML 화면 시안/ }).click();
+  await page.locator("#sourceHtml").fill('<button id="demo">JS 실행</button><script>document.getElementById("demo").onclick=()=>{document.getElementById("demo").textContent="실행 완료"}</script>');
+  await page.getByRole("button",{name:"Preview",exact:true}).click();
+  const htmlPreview = page.frameLocator('iframe[title="입력 HTML 동작 미리보기"]');
+  await htmlPreview.getByRole("button",{name:"JS 실행",exact:true}).click();
+  await htmlPreview.getByRole("button",{name:"실행 완료",exact:true}).waitFor();
+  await page.getByRole("button",{name:"Code",exact:true}).click();
   await page.locator("#sourceHtml").fill("<main>확정 입력 HTML 원문</main>");
   await page.getByRole("button", { name: /PPT · 자료 첨부/ }).click();
   await page.getByLabel("자료 첨부", { exact: true }).setInputFiles({ name: "brief.txt", mimeType: "text/plain", buffer: Buffer.from("확정 첨부 원본") });
@@ -31,6 +37,18 @@ try {
   await page.getByRole("heading", { name: "[쇳물 성분 보기]", exact: true }).waitFor();
   await page.getByText("협의 UI 검토_version1.md", { exact: true }).waitFor();
   await page.getByRole("heading", { name: "입력된 요구사항_version1", exact: true }).waitFor();
+  const originalMd = await page.evaluate(() => JSON.parse(localStorage.getItem("vibelation.requests.v4")).items[0].requirements[0]);
+  await page.getByRole("button",{name:"Code",exact:true}).click();
+  await page.getByRole("textbox",{name:"요구사항 MD 코드",exact:true}).fill(originalMd.markdown + "\n\n수동 편집 확인");
+  await page.getByRole("button",{name:"저장",exact:true}).click();
+  await page.getByRole("button",{name:"저장",exact:true}).waitFor({state:"visible"});
+  await page.getByRole("button",{name:"Preview",exact:true}).click();
+  await page.getByText("수동 편집 확인",{exact:true}).waitFor();
+  const editedMd = await page.evaluate(() => JSON.parse(localStorage.getItem("vibelation.requests.v4")).items[0].requirements[0]);
+  assert.equal(editedMd.id,originalMd.id);
+  assert.equal(editedMd.generationNumber,originalMd.generationNumber);
+  assert.match(editedMd.markdown,/수동 편집 확인/);
+
   assert.equal(await page.getByText(/서버 미연결 Mock/).count(), 0);
   assert.equal(await page.locator(".document-content").getByText("HTML 원문", { exact: true }).count(), 0);
   await page.getByRole("button", { name: "‹ 쇳물 녹이기", exact: true }).click();
@@ -57,13 +75,13 @@ try {
   await page.getByRole("progressbar", {name:"에이전트 응답 대기"}).waitFor({state:"hidden"});
   assert.equal(await page.locator(".resource").count(),0);
   await page.locator('.graph-node').first().waitFor();
-  assert.equal(await page.locator('.graph-node').count(),17);
+  assert.equal(await page.locator('.graph-node').count(),19);
   await page.locator('.graph-node').first().click();
   await page.getByRole('complementary', {name:'선택 자원 근거'}).getByRole('heading',{name:'코드 근거'}).waitFor();
-  assert.equal(await page.locator('.graph-lines > path').count(),16);
+  assert.equal(await page.locator('.graph-lines > path').count(),15);
   const verifyFilter = page.getByRole('button',{name:/^확인만 \(/});
   await verifyFilter.click();
-  assert.ok(await page.locator('.graph-node').count()<17);
+  assert.ok(await page.locator('.graph-node').count()<19);
   assert.equal(await page.getByRole('complementary',{name:'선택 자원 근거'}).getByText('노드를 선택하면 처리 방침과 연결 근거가 표시됩니다.').count(),1);
   await verifyFilter.click();
 

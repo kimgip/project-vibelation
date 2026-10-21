@@ -1,3 +1,4 @@
+import { RequirementEditor } from "../components/RequirementEditor";
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import {
@@ -36,6 +37,8 @@ export function InputPage(props: WorkspaceProps) {
   const view = inputView(r, location.search);
   const actions = useRequirements(r, update, edit, saved);
   const preview = useSystemMock(r, update, saved);
+  const [mdDirty, setMdDirty] = useState(false);
+  useEffect(() => { if (!mdDirty) return; const guard = (e: BeforeUnloadEvent) => {e.preventDefault(); e.returnValue = "";}; window.addEventListener("beforeunload",guard); return () => window.removeEventListener("beforeunload",guard); }, [mdDirty]);
   const [openingPreview, setOpeningPreview] = useState(false);
   const previewBasis = useRef("");
   const recoveringPreview = useRef(true);
@@ -163,7 +166,7 @@ export function InputPage(props: WorkspaceProps) {
           }}
           next={{
             label: "탕도 살피기 ›",
-            disabled: !saved || !!props.busy || !canConfirmRequirement(r),
+            disabled: mdDirty || !saved || !!props.busy || !canConfirmRequirement(r),
             onClick: () => props.confirmAndAnalyze(),
           }}
           reason={
@@ -287,7 +290,7 @@ export function InputPage(props: WorkspaceProps) {
               </span>
               <button
                 onClick={() =>
-                  downloadRequirement(doc)
+                  !mdDirty && downloadRequirement(doc)
                 }
               >
                 MD 다운로드 ↓
@@ -303,7 +306,7 @@ export function InputPage(props: WorkspaceProps) {
                 <button
                   className={`md-base-button ${base ? "secondary" : "primary"}`}
                   disabled={
-                    !saved ||
+                    mdDirty || !saved ||
                     applying ||
                     r.attachments.some((a) => a.uploadStatus !== "uploaded")
                   }
@@ -323,7 +326,12 @@ export function InputPage(props: WorkspaceProps) {
               </p>
             )}
             <div className="document-content">
-              <MarkdownPreview markdown={doc.markdown} />
+              <RequirementEditor key={doc.id} document={doc} onDirty={setMdDirty} onSaved={document => update(latest => {
+                const changed = latest.requirements.find(d => d.id === document.id)?.markdown !== document.markdown;
+                const next = {...latest, requirements:latest.requirements.map(d => d.id === document.id ? document : d)};
+                if (!changed || latest.selectedRequirementDocumentId !== document.id) return next;
+                return {...next, revision:next.revision+1, requirement: next.requirement ? {...next.requirement,markdown:document.markdown} : undefined, activeConfirmationId:undefined, selectedMockId:undefined, mocks:next.mocks.filter(m=>m.requirementDocumentId!==document.id), mockJobs:next.mockJobs.filter(j=>j.requirementDocumentId!==document.id), analysis:undefined, report:undefined, review:undefined, scopeReviewed:false, estimateReviewed:false};
+              })} />
             </div>
           </section>
           <div className="document-aside">
@@ -338,6 +346,7 @@ export function InputPage(props: WorkspaceProps) {
                     key={d.id}
                     aria-pressed={doc.id === d.id}
                     className={doc.id === d.id ? "viewing" : ""}
+                    disabled={mdDirty}
                     onClick={() => setViewId(d.id)}
                   >
                     <span className="md-history-title">
@@ -377,12 +386,12 @@ export function InputPage(props: WorkspaceProps) {
           label: "탕도 살피기로 건너뛰기 ›",
           title:
             "화면 변경이 없거나, 이미 확정된 화면이 있을 때 건너뛸 수 있어요",
-          disabled: !saved || !!props.busy || !hasAppliedRequirement(r) || !r.screenType,
+          disabled: mdDirty || !saved || !!props.busy || !hasAppliedRequirement(r) || !r.screenType,
           onClick: () => props.confirmAndAnalyze({ skipPreview: true }),
         }}
         next={{
           label: "미리 붓기 ›",
-          disabled: !saved || !hasAppliedRequirement(r) || !r.screenType || openingPreview,
+          disabled: mdDirty || !saved || !hasAppliedRequirement(r) || !r.screenType || openingPreview,
           onClick: () => {
             if (preview.displayed) go("input?view=preview");
             else { previewBasis.current = currentPreviewBasis; setOpeningPreview(true); preview.start(); }

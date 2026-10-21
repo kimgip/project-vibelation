@@ -15,6 +15,7 @@ export interface UploadedFile {
 }
 export interface RequirementsService {
   readonly mode: "mock" | "server";
+  saveDocument(document: RequirementDocument, markdown: string, signal: AbortSignal): Promise<RequirementDocument>;
   select(
     requestId: string,
     documentId: string | null,
@@ -90,6 +91,18 @@ const ensure = (signal: AbortSignal) => {
 };
 export const mockRequirementsService: RequirementsService = {
   mode: "mock",
+  async saveDocument(document, markdown, signal) {
+    ensure(signal);
+    const job = jobs().find(j => j.document?.id === document.id && j.inputSnapshot.requestId === document.inputSnapshot.requestId);
+    if (!job?.document) throw new Error("저장할 문서를 찾을 수 없습니다.");
+    if (job.document.markdown !== document.markdown) throw new Error("다른 곳에서 문서가 수정됐습니다. 편집 내용은 유지됩니다.");
+    if (markdown === document.markdown) return document;
+    const bytes = new TextEncoder().encode(markdown);
+    const hash = [...new Uint8Array(await crypto.subtle.digest("SHA-256",bytes))].map(v=>v.toString(16).padStart(2,"0")).join("");
+    const saved = {...document,markdown,contentHash:hash,updatedAt:new Date().toISOString()};
+    save({...job,document:saved});
+    return saved;
+  },
   async select(_requestId, _documentId, _inputRevision, signal) {
     ensure(signal);
   },
@@ -225,6 +238,20 @@ export function createHttpRequirementsService(
   const route = (id: string) => `/api/requests/${encodeURIComponent(id)}`;
   return {
     mode: "server",
+    async saveDocument(document, markdown, signal) {
+      const path = `${route(document.inputSnapshot.requestId)}/requirement-documents/${encodeURIComponent(document.id)}`;
+      const response = await fetch(base + path, {signal, credentials:"same-origin"});
+      if (!response.ok) throw new Error("문서 저장 기준을 조회하지 못했습니다.");
+      const current = await response.json();
+      if (current.markdown !== document.markdown) throw new Error("다른 곳에서 문서가 수정됐습니다. 새로고침 후 다시 확인해주세요. 편집 내용은 유지됩니다.");
+      const etag = response.headers.get("ETag");
+      if (!etag) throw new Error("서버가 MD 편집 저장을 지원하지 않습니다 (ETag 없음).");
+      const result = await fetch(base + path, {method:"PATCH",signal,credentials:"same-origin",headers:{"Content-Type":"application/json","If-Match":etag},body:JSON.stringify({markdown})});
+      if (!result.ok) throw new Error(result.status === 412 ? "다른 곳에서 문서가 수정됐습니다. 편집 내용을 보존한 뒤 새로고침해주세요." : "MD 저장에 실패했습니다. 편집 내용은 유지됩니다.");
+      const saved = await result.json();
+      if (saved.id !== document.id || saved.markdown !== markdown || saved.generationNumber !== document.generationNumber) throw new Error("저장된 문서 응답이 요청과 다릅니다.");
+      return {...document,...saved};
+    },
     async select(id, documentId, inputRevision, signal) {
       const current = await request<{requestRevision: number; inputRevision: number}>(route(id), signal);
       await request(route(id), signal, {

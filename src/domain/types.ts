@@ -74,6 +74,8 @@ export interface InputSnapshot {
   attachments?: Attachment[];
 }
 export interface RequirementDocument {
+  contentHash?: string;
+  updatedAt?: string;
   displayTitle?: string;
   contextDocumentIds?: string[];
   contextPolicyVersion?: string;
@@ -424,7 +426,7 @@ export const validSelectedMock = (r: WorkRequest) => {
   );
 };
 export const draftFingerprint = (r: WorkRequest) =>
-  JSON.stringify([r.inputRevision, r.selectedRequirementDocumentId]);
+  JSON.stringify([r.inputRevision, r.selectedRequirementDocumentId, appliedDocument(r)?.markdown]);
 export const hasConfirmedRequirement = (r: WorkRequest) => {
   const c = activeConfirmation(r);
   return (

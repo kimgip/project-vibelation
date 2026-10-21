@@ -1,3 +1,4 @@
+import { InteractiveHtmlFrame } from "../components/InteractiveHtmlFrame";
 import { useState } from "react";
 import { StaticHtmlFrame } from "../components/StaticHtmlFrame";
 import { sample } from "../mocks/download-center";
@@ -58,7 +59,7 @@ export function MaterialCards({
                   {type === "text"
                     ? "채팅 · 요청 메시지 붙여넣기"
                     : type === "html"
-                      ? "화면 시안 · 코드와 정적 미리보기"
+                      ? "화면 시안 · 코드와 동작 미리보기"
                       : "기획서 · 화면 설계서 파일 선택"}
                 </small>
               </div>
@@ -105,7 +106,7 @@ export function MaterialCards({
                 </button>
               </div>
               {preview ? (
-                <StaticHtmlFrame html={r.html} />
+                <InteractiveHtmlFrame html={r.html} />
               ) : (
                 <>
                   <label className="sr-only" htmlFor="sourceHtml">
@@ -123,8 +124,7 @@ export function MaterialCards({
                 </>
               )}
               <small>
-                {r.html.split("\n").length}줄 · JavaScript·외부 통신을 차단한
-                정적 미리보기입니다.
+                {r.html.split("\n").length}줄 · JavaScript 동작 미리보기입니다. 외부 통신은 지원하지 않습니다.
               </small>
             </>
           ) : (
