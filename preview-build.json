@@ -1,8 +1,9 @@
 {
   "mode": "local-ui-preview",
-  "builtAt": "2026-10-20T12:28:28.462398+00:00",
+  "builtAt": "2026-10-21T03:44:55.037499+00:00",
+  "fix": "md-screen-type-navigation",
   "assets": [
-    "index-C6lfZCNB.css",
-    "index-CKZI0r66.js"
+    "index--JfudiH5.js",
+    "index-C6lfZCNB.css"
   ]
 }
