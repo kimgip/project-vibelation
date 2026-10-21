@@ -123,9 +123,7 @@ export function MaterialCards({
                   />
                 </>
               )}
-              <small>
-                {r.html.split("\n").length}줄 · JavaScript 동작 미리보기입니다. 외부 통신은 지원하지 않습니다.
-              </small>
+              <small>{r.html.split("\n").length}줄</small>
             </>
           ) : (
             <>

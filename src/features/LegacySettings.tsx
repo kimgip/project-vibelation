@@ -123,10 +123,6 @@ export function LegacySettings() {
         title="⚙ 설정"
         description="기존 코드 ZIP을 보관하고, Mock 생성·레거시 분석에 사용할 틀을 관리합니다."
       />
-      <p className="workflow-info">
-        ZIP은 이 브라우저에 보관됩니다. 서버 전송은 Mock 생성·분석 시 수행하며,
-        코드 내부 검증·정적 분석은 서버의 책임입니다.
-      </p>
       {error && (
         <div className="inline-error" role="alert">
           {error}{" "}
@@ -257,10 +253,6 @@ export function LegacySettings() {
                 />
               </label>
             </div>
-            <small>
-              브라우저 보관 제한: ZIP 파일당 100MiB. GitHub 계정 연결 없이
-              내려받은 ZIP을 선택합니다.
-            </small>
           </div>
         </fieldset>
         <div className="workflow-actions">
