@@ -6,14 +6,103 @@
   },
   "cases": [
     {
-      "title": "검색 조건 및 카테고리 탐색 개선",
-      "reason": "목록 상태와 공통 검색 UI를 함께 변경",
-      "difference": "ZIP 처리와 파일 권한은 포함하지 않은 시연 사례"
+      "historyId": "download",
+      "title": "다운로드 센터 다중 선택 개선",
+      "registeredAt": "2026-10-16",
+      "business": 0.94,
+      "resource": 0.9,
+      "reason": "여러 자료를 선택한 뒤 한 번에 내려받는 사용자 흐름과 다운로드 처리 로직 개선.",
+      "difference": "시연 사례이며 실제 수정 완료 내역이 아닙니다.",
+      "resources": [
+        {
+          "kind": "UI",
+          "name": "DownloadCenter.tsx",
+          "path": "src/pages/download/DownloadCenter.tsx"
+        },
+        {
+          "kind": "Logic",
+          "name": "DownloadService.ts",
+          "path": "src/services/DownloadService.ts"
+        },
+        {
+          "kind": "API",
+          "name": "downloadBatch",
+          "path": "/api/download/batch"
+        },
+        {
+          "kind": "Permission",
+          "name": "downloadPolicy",
+          "path": "src/security/downloadPolicy.ts"
+        }
+      ]
     },
     {
-      "title": "고객지원 자료 상세 안내 개선",
-      "reason": "자료 상세 모달과 파일 정보 표현 개선",
-      "difference": "다중 선택 기능이 없어 공수를 그대로 적용할 수 없음"
+      "historyId": "partner",
+      "title": "파트너 포털 자료 일괄 다운로드",
+      "registeredAt": "2025-08-21",
+      "business": 0.86,
+      "resource": 0.24,
+      "reason": "파트너 포털에서 다중 자료 선택 및 일괄 다운로드 기능 제공.",
+      "difference": "시연 사례이며 실제 수정 완료 내역이 아닙니다.",
+      "resources": [
+        {
+          "kind": "UI",
+          "name": "PartnerFiles.tsx",
+          "path": "src/pages/partner/PartnerFiles.tsx"
+        },
+        {
+          "kind": "Logic",
+          "name": "BatchDownloadService",
+          "path": "src/services/BatchDownloadService.ts"
+        },
+        {
+          "kind": "API",
+          "name": "partnerFiles",
+          "path": "/api/partner/files"
+        }
+      ]
+    },
+    {
+      "historyId": "search",
+      "title": "고객지원 자료 검색 개선",
+      "registeredAt": "2025-04-09",
+      "business": 0.31,
+      "resource": 0.78,
+      "reason": "고객지원 자료 검색 조건과 결과 표시 방식을 개선.",
+      "difference": "시연 사례이며 실제 수정 완료 내역이 아닙니다.",
+      "resources": [
+        {
+          "kind": "UI",
+          "name": "SupportSearch.tsx",
+          "path": "src/pages/support/SupportSearch.tsx"
+        },
+        {
+          "kind": "API",
+          "name": "supportSearch",
+          "path": "/api/support/search"
+        }
+      ]
+    },
+    {
+      "historyId": "notify",
+      "title": "공통 알림 설정 변경",
+      "registeredAt": "2024-11-07",
+      "business": 0.16,
+      "resource": 0.26,
+      "reason": "공통 알림 설정과 권한 검증 로직을 변경.",
+      "difference": "시연 사례이며 실제 수정 완료 내역이 아닙니다.",
+      "resources": [
+        {
+          "kind": "Logic",
+          "name": "NotificationService",
+          "path": "src/services/NotificationService.ts"
+        },
+        {
+          "kind": "Permission",
+          "name": "notifyPolicy",
+          "path": "src/security/notifyPolicy.ts"
+        }
+      ]
     }
   ],
   "materials": [

@@ -83,6 +83,24 @@ try {
   assert.equal(await page.getByRole("checkbox").count(), 0);
   assert.equal(await page.getByRole("button", { name: /준비서 내려받기|리포트 다시 생성/ }).count(), 0);
   assert.equal(await page.locator(".review-estimate").count(), 0);
+  await page.getByRole("tab", {name:"유사사례", exact:true}).click();
+  assert.equal(await page.locator(".sc-case").count(), 3);
+  assert.equal(await page.locator(".sc-node").count(), 4);
+  assert.equal(await page.locator(".sc-case").filter({hasText:"공통 알림"}).count(), 0);
+  await page.locator(".sc-case").filter({hasText:"다운로드 센터 다중 선택 개선"}).click();
+  assert.equal(await page.locator('.sc-node[aria-pressed="true"]').count(), 2);
+  await page.locator(".sc-details").getByText("DownloadCenter.tsx", {exact:false}).first().waitFor();
+  await page.screenshot({path:"test-results/similar-cases-desktop.png",fullPage:true});
+  await page.getByRole("button", {name:"선택 초기화",exact:true}).click();
+  assert.equal(await page.locator('.sc-node[aria-pressed="true"]').count(), 0);
+  await page.locator(".sc-node").first().focus();
+  await page.keyboard.press("Enter");
+  assert.equal(await page.locator('.sc-node[aria-pressed="true"]').count(), 2);
+  await page.setViewportSize({width:390,height:844});
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), "similar map mobile overflow");
+  await page.screenshot({path:"test-results/similar-cases-mobile.png",fullPage:true});
+  await page.setViewportSize({width:1440,height:1100});
+  await page.getByRole("tab", {name:"검토 요약",exact:true}).click();
   await page.getByRole("button", { name: "brief.txt 다운로드", exact: true }).waitFor();
   const downloadText = async name => {
     const event = page.waitForEvent("download");

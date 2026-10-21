@@ -1,3 +1,13 @@
+export interface SimilarCase {
+  historyId?: string;
+  title: string;
+  reason: string;
+  difference: string;
+  registeredAt?: string;
+  business?: number | null;
+  resource?: number | null;
+  resources?: { kind: string; name: string; path: string }[];
+}
 import type { ImpactGraph } from "./impactGraph";
 import { validDueDate } from "./requestDetails";
 export type ResourceType = "UI" | "Logic" | "API" | "DB" | "Permission";
@@ -28,7 +38,7 @@ export interface Impact {
 export interface Analysis {
   impactGraph?: ImpactGraph;
   impactGraphError?: string;
-  similarCases?: { title: string; reason: string; difference: string }[];
+  similarCases?: SimilarCase[];
   html?: string;
   analysisHtmlArtifact?: { id: string; fileName: string; mediaType: string; sizeBytes: number; sha256: string };
   source?: "mock" | "server";
@@ -130,7 +140,7 @@ export interface WorkRequest {
 }
 export interface Registration {
   reviewSummarySnapshot?: string;
-  similarCasesSnapshot?: { title: string; reason: string; difference: string }[];
+  similarCasesSnapshot?: SimilarCase[];
   id: string;
   key: string;
   registeredAt: string;
