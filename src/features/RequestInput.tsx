@@ -205,12 +205,14 @@ export function InputPage(props: WorkspaceProps) {
           </p>
         )}
         {actions.pending && (
-          <p role="status" className="workflow-notice">
-            {actions.pending.phase === "merging_previous" && actions.pending.contextDocumentIds?.length
-              ? "이전 버전과 합치는 중입니다…" : "요구사항 정리 중…"}
-            {!actions.pending.error && <progress aria-label="요구사항 생성 진행" />}
-            {actions.pending.error && <><span role="alert">{actions.pending.error}</span><button onClick={() => actions.retry(actions.pending!.id)}>작업 상태 다시 확인</button></>}
-          </p>
+          actions.pending.error ? <div role="alert" className="workflow-notice">
+            <span>{actions.pending.error}</span><button onClick={() => actions.retry(actions.pending!.id)}>작업 상태 다시 확인</button>
+          </div> : <div className="agent-progress" role="status" aria-live="polite">
+            <strong>{actions.pending.phase === "merging_previous" && actions.pending.contextDocumentIds?.length
+              ? "이전 버전과 합치는 중입니다…" : "요구사항 정리 중…"}</strong>
+            <progress aria-label="요구사항 생성 진행" />
+            <span>처리가 완료되면 결과를 보여드립니다.</span>
+          </div>
         )}
         <StepFooter
           back={{
@@ -370,9 +372,15 @@ export function InputPage(props: WorkspaceProps) {
           생성된 문서가 없습니다. 자료를 넣고 요구사항을 정리해주세요.
         </Empty>
       )}
-      {openingPreview && !preview.displayed && <div className="workflow-notice" role="status">
-        {preview.job?.error ? <><span>{preview.job.error}</span><button onClick={() => preview.start()}>{preview.job.status === "failed" ? "다시 시도" : "작업 상태 다시 확인"}</button></> : <><span>예상 화면 생성 중…</span><progress aria-label="예상 화면 생성 진행" /></>}
-      </div>}
+      {openingPreview && !preview.displayed && (
+        preview.job?.error ? <div className="workflow-notice" role="alert">
+          <span>{preview.job.error}</span><button onClick={() => preview.start()}>{preview.job.status === "failed" ? "다시 시도" : "작업 상태 다시 확인"}</button>
+        </div> : <div className="agent-progress" role="status" aria-live="polite">
+          <strong>예상 화면 생성 중…</strong>
+          <progress aria-label="예상 화면 생성 진행" />
+          <span>처리가 완료되면 결과를 보여드립니다.</span>
+        </div>
+      )}
       {!r.screenType && <div className="workflow-notice" role="status">
         <span>화면 종류(신규/수정)를 선택해야 다음 단계로 진행할 수 있습니다. 기존 요구사항 MD는 그대로 유지됩니다.</span>
         <button onClick={() => go("input?view=legacy")}>화면 종류 선택하기</button>

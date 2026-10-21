@@ -32,7 +32,7 @@ test("generation idempotency, repeat generation and reload recovery", async () =
   await new Promise((r) => setTimeout(r, 920));
   const a = await mockRequirementsService.get("req", first.id, signal);
   assert.equal(a.status, "succeeded");
-  assert.match(a.document.markdown, /^# 파일 요청_version1/);
+  assert.match(a.document.markdown, /^# \[요구사항\] 다운로드 센터/);
   assert.doesNotMatch(a.document.markdown, /brief.txt|<h1>HTML<\/h1>|## 대화·텍스트 원문|## HTML 원문/);
   assert.equal(a.document.inputSnapshot.html, input.html);
   assert.deepEqual(a.document.contextDocumentIds, []);

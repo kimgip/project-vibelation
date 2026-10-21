@@ -146,7 +146,7 @@ try {
   assert.equal(await page.locator("details.confirmation-summary").count(), 0);
   const md = await downloadText("확정 요구사항 MD 다운로드");
   assert.equal(md.name, "협의 UI 검토_version1.md");
-  assert.match(md.text, /^# 협의 UI 검토_version1/);
+  assert.match(md.text, /^# \[요구사항\] 다운로드 센터/);
   assert.equal(await page.getByRole("button", { name: "리포트 다운로드", exact: true }).count(), 0);
   for (const tab of ["영향 범위", "유사사례", "검토 요약"]) {
     await page.getByRole("tab", { name: tab, exact: true }).click();
