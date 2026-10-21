@@ -95,10 +95,6 @@ function HistoryContent({
         </Link>
         <ScreenTitle title={detail.request.title || "과거 검토 이력"} description={`${displayDate(detail.registeredAt)} 등록`} />
         <ReviewContent r={detail.request} historical summary={detail.reviewSummarySnapshot} similarCases={detail.similarCasesSnapshot} />
-        <div className="document-actions">
-          <button onClick={() => { document.querySelector<HTMLElement>(".confirmed-materials")?.focus(); document.querySelector(".confirmed-materials")?.scrollIntoView({ block: "center", behavior: "smooth" }); }}>현업 요구사항 다운로드</button>
-          <button disabled={!activeConfirmation(detail.request)} onClick={() => { const c = activeConfirmation(detail.request); if (c) downloadRequirement(c.documentSnapshot); }}>확정 요구사항 MD 다운로드</button>
-        </div>
       </>
     ) : (
       <Empty>

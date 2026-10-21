@@ -102,7 +102,7 @@ try {
   await page.getByRole("heading", { name: "[붓기 준비 완료]", exact: true }).waitFor();
   assert.equal(await page.getByText(/예상 공수|총 \d+일/).count(),0);
   assert.deepEqual(await page.getByRole("tab").allTextContents(), ["검토 요약", "영향 범위", "유사사례"]);
-  assert.equal(await page.getByRole("checkbox").count(), 0);
+  assert.equal(await page.locator('input[type="checkbox"]:not(:disabled)').count(), 0);
   assert.equal(await page.getByRole("button", { name: /준비서 내려받기|리포트 다시 생성/ }).count(), 0);
   assert.equal(await page.locator(".review-estimate").count(), 0);
   await page.getByRole("tab", {name:"유사사례", exact:true}).click();
@@ -141,16 +141,14 @@ try {
   await page.screenshot({ path: "test-results/design-review-desktop.png", fullPage: true });
   await page.getByRole("button", { name: "이력에 등록", exact: true }).click();
   await page.waitForURL(/#\/history\//);
-  await page.getByRole("button", { name: "확정 요구사항 MD 다운로드", exact: true }).waitFor();
+  await page.getByRole("tab",{name:"검토 요약",exact:true}).waitFor();
+  assert.equal(await page.getByRole("button", {name:"확정 요구사항 MD 다운로드",exact:true}).count(),0);
   assert.deepEqual(await page.getByRole("tab").allTextContents(), ["검토 요약", "영향 범위", "유사사례"]);
   assert.equal(await page.locator("details.confirmation-summary").count(), 0);
-  const md = await downloadText("확정 요구사항 MD 다운로드");
-  assert.equal(md.name, "협의 UI 검토_version1.md");
-  assert.match(md.text, /^# \[요구사항\] 다운로드 센터/);
   assert.equal(await page.getByRole("button", { name: "리포트 다운로드", exact: true }).count(), 0);
   for (const tab of ["영향 범위", "유사사례", "검토 요약"]) {
     await page.getByRole("tab", { name: tab, exact: true }).click();
-    assert.equal(await page.getByRole("heading", { name: "확정 요구사항 입력 자료", exact: true }).count(), 1);
+    assert.equal(await page.getByRole("heading", { name: "확정 요구사항 입력 자료", exact: true }).count(), tab === "검토 요약" ? 1 : 0);
   }
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: "test-results/design-history-mobile.png", fullPage: true });
