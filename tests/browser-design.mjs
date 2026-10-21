@@ -111,7 +111,7 @@ try {
   assert.equal(await page.locator(".sc-case").filter({hasText:"공통 알림"}).count(), 0);
   await page.locator(".sc-case").filter({hasText:"다운로드 센터 다중 선택 개선"}).click();
   assert.equal(await page.locator('.sc-node[aria-pressed="true"]').count(), 2);
-  await page.locator(".sc-details").getByText("DownloadCenter.tsx", {exact:false}).first().waitFor();
+  assert.equal(await page.locator(".sc-details").count(), 0);
   await page.screenshot({path:"test-results/similar-cases-desktop.png",fullPage:true});
   await page.getByRole("button", {name:"선택 초기화",exact:true}).click();
   assert.equal(await page.locator('.sc-node[aria-pressed="true"]').count(), 0);

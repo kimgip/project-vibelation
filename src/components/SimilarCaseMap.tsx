@@ -15,7 +15,6 @@ export function SimilarCaseMap({ title, items, demo = false }: { title: string; 
   const perspectives = (["business", "resource"] as const).map(type => ({ type, cases: withIds.filter(c => eligible(c[type])).sort((a, b) => (b[type] as number) - (a[type] as number) || (b.registeredAt || "").localeCompare(a.registeredAt || "") || a.key.localeCompare(b.key)).slice(0, 10) }));
   const visible = new Set(perspectives.flatMap(p => p.cases.map(c => c.key)));
   const list = withIds.filter(c => visible.has(c.key)).sort((a, b) => Math.max(b.business || 0, b.resource || 0) - Math.max(a.business || 0, a.resource || 0));
-  const current = list.find(c => c.key === selected);
   const scored = withIds.some(c => scoreValid(c.business) || scoreValid(c.resource));
   if (!scored) return <div className="similar-map"><p>관계 지도에 필요한 유사도 자료가 없습니다.</p>{valid.map((c, i) => <section className="similar-case" key={i}><h3>{c.title}</h3><p>{c.reason}</p><small>차이점: {c.difference}</small></section>)}</div>;
   return <div className="similar-map">
@@ -52,6 +51,5 @@ export function SimilarCaseMap({ title, items, demo = false }: { title: string; 
       </svg>
       <div className="sc-footer"><span>크기·색 농도 = 관점별 유사도 · 60점 이상 표시</span><button type="button" onClick={() => setSelected(null)}>선택 초기화</button></div>
     </div><div className="sc-side"><h3>유사 개선 이력</h3><p>비즈니스·자원 관점을 각각 선별합니다.</p>{list.length === 0 && <p>기준을 통과한 유사사례가 없습니다.</p>}{list.map(c => <button type="button" key={c.key} className={`sc-case ${selected === c.key ? 'selected' : ''}`} aria-pressed={selected === c.key} onClick={() => setSelected(c.key)}><strong>{c.title}</strong><small>{c.registeredAt || '등록일 미보유'}</small><span className="sc-pills">{(["business", "resource"] as const).filter(type => eligible(c[type])).map(type => <span key={type} style={{ color: colors[type] }}>{type === 'business' ? '비즈니스' : '자원'} 유사 {Math.round((c[type] as number) * 100)}점</span>)}</span><span className="sc-kinds">{[...new Set((c.resources || []).map(r => r.kind))].join(' · ')}</span></button>)}</div></div>
-    <div className="sc-details" aria-live="polite"><h3>{current ? `과거 개선건 · ${current.title}` : '개선건을 선택해 상세 이력을 확인하세요'}</h3><div className="sc-detailgrid"><div><h4>당시 요청사항 / 검토 요약</h4><p>{current?.reason || '그래프의 원형 노드 또는 오른쪽 사례 목록을 선택하세요.'}</p>{current?.difference && <p>차이점: {current.difference}</p>}</div><div><h4>당시 검토 자원 및 경로</h4>{current ? (current.resources?.length ? current.resources.map((r, i) => <div className="sc-resource" key={i}><b>{r.kind}</b> · {r.name}<code>{r.path}</code></div>) : <p>등록 당시 자원 자료가 없습니다.</p>) : <p>선택한 사례의 검토 자원이 여기에 표시됩니다.</p>}</div></div></div>
   </div>;
 }

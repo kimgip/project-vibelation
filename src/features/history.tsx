@@ -37,7 +37,7 @@ export function HistoryPage({ items, id }: { items: Registration[]; id?: string 
   if (!result || result.id !== id || result.source !== items) return <p role="status">검토 이력을 불러오는 중입니다…</p>;
   return <HistoryContent key={id || "list"} items={result.items} id={id} />;
 }
-const laneOrder = ["UI", "Logic", "API", "DB", "Permission"] as const;
+const laneOrder = ["UI", "Logic", "API", "DB", "Permission", "Other"] as const;
 /** 틀 id → display name: built-in demo plus ZIP references saved in this browser. */
 function useLegacyNames() {
   const [names, setNames] = useState<Record<string, string>>({
@@ -152,9 +152,9 @@ function HistoryContent({
                 <span className="history-card-meta">{meta.join(" · ")}</span>
                 {(lanes.length > 0 || impacts.length > 0) && (
                   <span className="history-card-scope">
-                    <span className="history-card-lanes">
+                    <span className="history-card-lanes resource-counts">
                       {lanes.map((lane) => (
-                        <LaneBadge key={lane} type={lane} compact />
+                        <Tag key={lane}>{lane === "Other" ? "설정·기타" : lane === "Permission" ? "권한" : lane} {(r.analysis?.impactGraph?.nodes || impacts).filter(i => ("resourceType" in i ? i.resourceType : i.type) === lane).length}</Tag>
                       ))}
                     </span>
 
