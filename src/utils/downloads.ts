@@ -40,3 +40,21 @@ export function downloadHtml(title: string, html: string) {
   anchor.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+
+export function safeFileName(name: string) {
+  return name.replace(/[<>:"/\\|?*\x00-\x1f]/g, "_").slice(0, 160) || "요구사항";
+}
+export function downloadBlob(name: string, blob: Blob) {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = safeFileName(name);
+  anchor.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+export function documentName(doc: import("../domain/types").RequirementDocument) {
+  return `${doc.displayTitle || doc.inputSnapshot.title || "요구사항"}_version${doc.generationNumber}`;
+}
+export function downloadRequirement(doc: import("../domain/types").RequirementDocument) {
+  downloadBlob(`${documentName(doc)}.md`, new Blob([doc.markdown], { type: "text/markdown;charset=utf-8" }));
+}

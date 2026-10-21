@@ -3,7 +3,7 @@ import { Plus, FileText, ChevronRight } from "lucide-react";
 import { useWorkspace } from "./features/useWorkspace";
 import { Landing } from "./features/Landing";
 import { InputPage, AnalysisPage, ReviewPage } from "./features/workspace";
-import { HistoryPage, TeamPage } from "./features/history";
+import { HistoryPage } from "./features/history";
 import { LegacySettings } from "./features/LegacySettings";
 import {
   AppHeader,
@@ -19,7 +19,8 @@ export function App() {
   return (
     <div className="workflow-app">
       {!landing && <AppHeader requests={w.requests} start={() => w.create()} />}
-      <main className={landing ? "landing-main" : "workflow-main"}>
+      {w.busy && <div className="agent-progress" role="status" aria-live="polite"><strong>{w.busy === "analysis" ? "코드 영향도를 분석하고 있어요" : w.busy === "similarCaseAnalysis" ? "유사사례를 분석하고 있어요" : w.busy === "confirm" ? "요구사항을 확정하고 있어요" : "응답을 기다리고 있어요"}</strong><progress aria-label="에이전트 응답 대기" /><span>처리가 완료되면 결과를 보여드립니다.</span></div>}
+      <main aria-busy={!!w.busy} className={landing ? "landing-main" : "workflow-main"}>
         {w.message && (
           <div className="workflow-notice" role="status">
             <span>{w.message}</span>
@@ -34,8 +35,6 @@ export function App() {
           <LegacySettings />
         ) : w.isHistory ? (
           <HistoryPage items={w.history} id={w.id} />
-        ) : w.isTeam ? (
-          <TeamPage history={w.history} />
         ) : w.r && w.props ? (
           <>
             <WorkflowProgress r={w.r} step={w.step} />
@@ -89,13 +88,6 @@ export function App() {
               <Empty>새 쇳물을 시작하고 현업의 자료를 넣어주세요.</Empty>
             )}
           </>
-        )}
-        {!landing && (
-          <footer className="workflow-page-footer">
-            <b>쇳물</b>
-            <span>요구사항을 녹여, 기존 틀에 붓다</span>
-            <small>서버 미설정 기능은 로컬 시연으로 동작합니다.</small>
-          </footer>
         )}
       </main>
     </div>

@@ -70,6 +70,8 @@ export function useRequirements(
               pending.inputSnapshot,
               pending.idempotencyKey,
               controller.signal,
+              r.requirements.find(d => d.id === pending.contextDocumentIds?.[0]),
+              pending.generationNumber,
             )
           : await requirementsService.get(r.id, pending.id, controller.signal);
         if (controller.signal.aborted) return;
@@ -81,7 +83,7 @@ export function useRequirements(
                 (g) => g.id !== pending.id,
               ),
             },
-            result,
+            { ...pending, ...result, inputSnapshot: result.inputSnapshot || pending.inputSnapshot, contextDocumentIds: result.contextDocumentIds || pending.contextDocumentIds },
           ),
         }));
       } catch (e) {
@@ -107,6 +109,7 @@ export function useRequirements(
     const key = crypto.randomUUID();
     const g: RequirementGeneration = {
       id: `pending:${key}`,
+      uiInputRevision: r.inputRevision,
       idempotencyKey: key,
       generationNumber:
         Math.max(
@@ -115,6 +118,9 @@ export function useRequirements(
           ...r.requirements.map((d) => d.generationNumber),
         ) + 1,
       status: "queued",
+      phase: "queued",
+      displayTitle: r.title || "요구사항",
+      contextDocumentIds: r.requirements.length ? [r.requirements.slice().sort((a, b) => b.generationNumber - a.generationNumber)[0].id] : [],
       inputSnapshot: snapshotOf(r),
       createdAt: new Date().toISOString(),
     };

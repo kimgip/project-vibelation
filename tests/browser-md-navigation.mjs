@@ -1,0 +1,53 @@
+import assert from "node:assert/strict";
+import { createRequire } from "node:module";
+import fs from "node:fs/promises";
+const require = createRequire(import.meta.url);
+const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
+const { createServer } = await import("vite");
+const server = await createServer({ server: { host: "127.0.0.1", port: 0 }, logLevel: "error" });
+await server.listen();
+const base = `http://127.0.0.1:${server.httpServer.address().port}/project-vibelation/`;
+const browser = await chromium.launch({ channel: "chrome", headless: true });
+try {
+  const page = await browser.newPage();
+  const errors = []; page.on("pageerror", e => errors.push(e.message));
+  await page.goto(base);
+  await page.getByRole("button", { name: /시작하기/ }).click();
+  assert.equal(await page.getByRole("button", { name: "쇳물 녹이기 ›", exact: true }).isDisabled(), true);
+  await page.getByText("신규 또는 수정을 선택해주세요", { exact: true }).waitFor();
+  assert.equal(await page.getByRole("link", { name: /쇳물 녹이기/ }).count(), 0, "progress cannot bypass missing screen type");
+  await page.getByRole("button", { name: "신규 레거시 스타일로 새 화면" }).click();
+  assert.equal(await page.getByRole("button", { name: "쇳물 녹이기 ›", exact: true }).isEnabled(), true);
+  // Restore an older persisted request with a selected MD but no screenType.
+  await page.evaluate(async base => {
+    const { blankRequest, snapshotOf, applyRequirement } = await import(new URL("src/domain/types.ts", base).href);
+    const r = blankRequest(); r.id = "old-no-screen-kind"; r.title = "기존 요청 복구"; r.text = "기존 입력";
+    r.requirements = [{ id: "original-md", generationId: "original-job", generationNumber: 1, inputRevision: r.inputRevision, inputSnapshot: snapshotOf(r), markdown: "# 기존 요청 복구_version1", source: "mock", formatVersion: "test", createdAt: r.updatedAt }];
+    localStorage.setItem("vibelation.requests.v4", JSON.stringify({ schemaVersion: 4, items: [applyRequirement(r, "original-md")] }));
+  }, base);
+  await page.goto(base + "#/requests/old-no-screen-kind/input?view=requirements");
+  await page.reload();
+  await page.getByText("✓ 협의 기준", { exact: true }).first().waitFor();
+  const next = page.getByRole("button", { name: "미리 붓기 ›", exact: true });
+  assert.equal(await next.isDisabled(), true);
+  await page.getByText("화면 종류(신규/수정)를 선택해주세요", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "화면 종류 선택하기", exact: true }).click();
+  await page.getByRole("button", { name: "수정 기존 화면에 추가" }).click();
+  await page.getByRole("button", { name: "성분 보기로 돌아가기 ›", exact: true }).click();
+  await page.getByText("입력 기준이 바뀌었습니다. MD를 다시 기준으로 정해주세요", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "기준으로 정하기", exact: true }).click();
+  await page.getByText("✓ 협의 기준", { exact: true }).first().waitFor();
+  assert.equal(await next.isEnabled(), true);
+  await next.click();
+  await page.getByRole("heading", { name: "[미리 붓기]", exact: true }).waitFor();
+  await page.locator('iframe[title="시스템 적용 예상 화면 미리보기"]').waitFor();
+  const result = await page.evaluate(() => JSON.parse(localStorage.getItem("vibelation.requests.v4")).items.find(r => r.id === "old-no-screen-kind"));
+  assert.equal(result.requirements.length, 1, "recovery does not require regenerating MD");
+  assert.equal(result.selectedRequirementDocumentId, "original-md");
+  assert.equal(result.screenType, "modify");
+  assert.equal(result.generations.length, 0);
+  assert.deepEqual(errors, []);
+  await fs.mkdir("test-results", { recursive: true });
+  await page.screenshot({ path: "test-results/md-navigation-recovered.png", fullPage: true });
+  console.log("MD navigation regression passed: early validation, truthful blocked reason, existing MD recovery, automatic preview without regeneration.");
+} finally { await browser.close(); await server.close(); }

@@ -70,7 +70,8 @@ export function WorkflowProgress({
       <ol>
         {screens.map(([key, label], index) => {
           const available =
-            index < 2 ||
+            index === 0 ||
+            (index === 1 && !!r.screenType) ||
             (index === 2 && r.requirements.length > 0) ||
             (index === 3 && hasAppliedRequirement(r)) ||
             (index >= 4 &&
@@ -247,9 +248,7 @@ export function RequestContext({
       <summary>
         <span>{requestTitle(r)}</span>
         <span className="context-version">
-          {r.legacyVersion.startsWith("zip:")
-            ? "코드 ZIP 기준 선택됨"
-            : r.legacyVersion}
+          선택한 레거시 기준
         </span>
         <span>요청 정보 수정</span>
       </summary>

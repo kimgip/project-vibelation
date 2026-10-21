@@ -29,3 +29,16 @@ test("history queries support abort before and during loading", async () => {
   await assert.rejects(pending, {name: "AbortError"});
   await assert.rejects(service.get("missing", controller.signal), {name: "AbortError"});
 });
+
+test("server registrations use frozen source snapshots and reject mismatched lineage", async () => {
+  const { registrationFromServer } = await import("../src/services/history.ts");
+  const snapshot = { requestId: "r", inputRevision: 1, title: "당시 제목", text: "당시 입력", html: "", attachmentIds: [], attachmentNames: [] };
+  const row = { id: "reg", requestId: "r", title: "당시 제목", registeredAt: "2026-10-20T00:00:00Z", reviewSummarySnapshot: "당시 요약",
+    confirmationSnapshot: { id: "c", version: 1, requestId: "r", inputRevision: 1, documentSnapshot: { id: "md", generationNumber: 1, markdown: "# 당시 MD", inputSnapshot: snapshot } },
+    analysisSnapshot: { id: "a", confirmationId: "c", legacyVersion: "fixed", impacts: [] }, reportSnapshot: { id: "p", confirmationId: "c", analysisResultId: "a", markdown: "# 리포트" } };
+  const result = registrationFromServer(row);
+  assert.equal(result.request.confirmations[0].documentSnapshot.inputSnapshot.text, "당시 입력");
+  assert.equal(result.reviewSummarySnapshot, "당시 요약");
+  assert.equal(result.request.scopeReviewed, false, "does not invent a review approval");
+  assert.throws(() => registrationFromServer({ ...row, analysisSnapshot: { ...row.analysisSnapshot, confirmationId: "other" } }), /기준/);
+});

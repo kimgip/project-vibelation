@@ -1,3 +1,5 @@
+import { analyzeSimilarCases } from "../services/similarCases";
+import { apiJson, jsonPost, serverMode } from "../services/api";
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
@@ -6,12 +8,12 @@ import {
   basisOf,
   sameBasis,
   confirmRequirement,
+  isCurrent,
   type WorkRequest,
   type Registration,
 } from "../domain/types";
 import { repository, REQUEST_KEY, HISTORY_KEY } from "../storage/repositories";
 import {
-  mockService,
   analysisInput,
   analyzeRequirements,
 } from "../services/contract";
@@ -44,8 +46,10 @@ export function useWorkspace() {
   const location = useLocation(),
     navigate = useNavigate();
   const parts = location.pathname.split("/");
-  const isHistory = parts[1] === "history",
-    isTeam = parts[1] === "team";
+  const isHistory = parts[1] === "history";
+  useEffect(() => {
+    if (location.pathname === "/team") navigate("/requests", { replace: true });
+  }, [location.pathname, navigate]);
   const id = parts[2];
   const r = requests.find((x) => x.id === id);
   const step = ["mock", "agreement"].includes(parts[3])
@@ -127,7 +131,7 @@ export function useWorkspace() {
     setBusy("");
     return commit(editRequest(r, patch));
   };
-  const create = (materials: Material[] = []) => {
+  const create = async (materials: Material[] = []) => {
     if (storageBlocked) {
       setMessage("저장 자료 충돌 또는 손상을 먼저 해결해주세요.");
       return;
@@ -138,7 +142,14 @@ export function useWorkspace() {
     )
       return;
     const next = blankRequest();
-    commit(next);
+    try {
+      if (serverMode) {
+        const response = await apiJson("/requests", new AbortController().signal, jsonPost({ title: next.title, legacyReferenceId: next.legacyVersion }, crypto.randomUUID()));
+        if (typeof response.id !== "string") throw new Error("서버 요청 ID를 확인할 수 없습니다.");
+        next.id = response.id;
+      }
+    } catch (e) { setMessage(e instanceof Error ? e.message : "요청 생성 실패"); return; }
+    if (!commit(next)) return;
     navigate(`/requests/${next.id}/input?view=legacy`, {
       state: {
         materials: materials.length ? materials : ["text"],
@@ -178,10 +189,14 @@ export function useWorkspace() {
   }, [location.pathname, location.state]);
   const go = (target: string) =>
     r && navigate(`/requests/${r.id}/${target}`, { state: location.state });
-  async function run(kind: "analysis" | "report", confirmed?: WorkRequest) {
+  async function run(kind: "analysis" | "similarCaseAnalysis", confirmed?: WorkRequest) {
     if (!r || active.current || !saved || storageBlocked) return;
     const latest = confirmed || requestsRef.current.find((x) => x.id === r.id);
     if (!latest) return;
+    if (kind === "similarCaseAnalysis" && isCurrent(latest, latest.similarCaseAnalysis) && latest.similarCaseAnalysis?.analysisId === latest.analysis?.id) {
+      navigate(`/requests/${latest.id}/review`);
+      return;
+    }
     const snapshot = structuredClone(latest),
       controller = new AbortController(),
       token = ++serial.current;
@@ -197,7 +212,7 @@ export function useWorkspace() {
               ),
               controller.signal,
             )
-          : await mockService[kind](snapshot, controller.signal);
+          : await analyzeSimilarCases(snapshot, controller.signal);
       const current = requestsRef.current.find((x) => x.id === snapshot.id);
       if (
         active.current?.id !== token ||
@@ -208,11 +223,11 @@ export function useWorkspace() {
       commit({
         ...current,
         [kind]: result,
-        ...(kind === "report" || kind === "analysis"
+        ...(kind === "similarCaseAnalysis" || kind === "analysis"
           ? { scopeReviewed: false, estimateReviewed: false }
           : {}),
       });
-      if (kind === "report") navigate(`/requests/${snapshot.id}/review`);
+      if (kind === "similarCaseAnalysis") navigate(`/requests/${snapshot.id}/review`);
     } catch (e) {
       if (!(e instanceof DOMException && e.name === "AbortError"))
         setMessage(
@@ -227,10 +242,18 @@ export function useWorkspace() {
       }
     }
   }
-  const register = () => {
+  const register = async () => {
     if (!r || busy || !saved || storageBlocked) return;
     try {
-      const result = repository.register(r);
+      let registrationId: string | undefined;
+      if (serverMode) {
+        setBusy("register");
+        const key = `register:${r.id}:${r.activeConfirmationId}:${r.analysis?.id}:${r.similarCaseAnalysis?.id}`;
+        const result = await apiJson("/review-registrations", new AbortController().signal, jsonPost({ requestId: r.id, confirmationId: r.activeConfirmationId, analysisResultId: r.analysis?.id, similarCaseAnalysisId: r.similarCaseAnalysis?.id }, key));
+        if (typeof result.reportId !== "string") throw new Error("등록 결과 ID를 확인할 수 없습니다.");
+        registrationId = result.reportId;
+      }
+      const result = repository.register(r, registrationId);
       setHistory(repository.history());
       navigate(`/history/${result.id}`);
     } catch (e) {
@@ -239,7 +262,7 @@ export function useWorkspace() {
           ? e.message
           : "등록에 실패했습니다. 입력을 보존했습니다.",
       );
-    }
+    } finally { setBusy(""); }
   };
   const reload = () => {
     if (
@@ -281,22 +304,45 @@ export function useWorkspace() {
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
-  const confirmAndAnalyze = (options: { skipPreview?: boolean } = {}) => {
+  const confirmAndAnalyze = async (options: { skipPreview?: boolean } = {}) => {
     if (!r || !saved || storageBlocked || active.current) return;
+    const controller = new AbortController();
+    const token = ++serial.current;
+    active.current = { id: token, controller };
     try {
       const latest = requestsRef.current.find((x) => x.id === r.id)!;
+      const capturedRevision = latest.revision;
       const confirmed = options.skipPreview
         ? { ...confirmRequirement(latest), previewSkipped: true }
         : confirmRequirement(latest);
+      if (serverMode) {
+        setBusy("confirm");
+        const signal = controller.signal;
+        const path = `/requests/${encodeURIComponent(r.id)}`;
+        const current = await apiJson(path, signal);
+        const c = confirmed.confirmations.find(c => c.id === confirmed.activeConfirmationId)!;
+        const remote = await apiJson(`${path}/requirement-confirmations`, signal, jsonPost({ requirementDocumentId: c.documentSnapshot.id, expectedInputRevision: current.inputRevision, expectedRequestRevision: current.requestRevision }, `confirm:${r.id}:${c.draftFingerprint}`));
+        if (typeof remote.id !== "string") throw new Error("서버 확정 ID를 확인할 수 없습니다.");
+        if ((remote.requestId && remote.requestId !== r.id) || (remote.documentSnapshot && (remote.documentSnapshot.id !== c.documentSnapshot.id || remote.documentSnapshot.markdown !== c.documentSnapshot.markdown))) throw new Error("서버 확정의 요구사항 기준이 다릅니다.");
+        confirmed.activeConfirmationId = remote.id;
+        confirmed.confirmations = [{ ...c, ...remote, inputRevision: confirmed.inputRevision, documentSnapshot: { ...c.documentSnapshot, ...remote.documentSnapshot, inputSnapshot: remote.documentSnapshot?.inputSnapshot || c.documentSnapshot.inputSnapshot }, draftFingerprint: c.draftFingerprint }, ...confirmed.confirmations.filter(x => x.id !== c.id)];
+      }
+      if (controller.signal.aborted || active.current?.id !== token || requestsRef.current.find(x => x.id === r.id)?.revision !== capturedRevision) return;
+      active.current = null;
       if (!commit(confirmed)) return;
+      setBusy("");
       navigate(`/requests/${r.id}/analysis`, { state: location.state });
       void run("analysis", confirmed);
     } catch (error) {
+      if (controller.signal.aborted) return;
       setMessage(
         error instanceof Error
           ? error.message
           : "요구사항 확정에 실패했습니다.",
       );
+      setBusy("");
+    } finally {
+      if (active.current?.id === token) { active.current = null; setBusy(""); }
     }
   };
   const props: WorkspaceProps | undefined = r
@@ -333,7 +379,6 @@ export function useWorkspace() {
     id,
     step,
     isHistory,
-    isTeam,
     create,
     commit,
     reload,

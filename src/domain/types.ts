@@ -1,3 +1,14 @@
+export interface SimilarCase {
+  historyId?: string;
+  title: string;
+  reason: string;
+  difference: string;
+  registeredAt?: string;
+  business?: number | null;
+  resource?: number | null;
+  resources?: { kind: string; name: string; path: string }[];
+}
+import type { ImpactGraph } from "./impactGraph";
 import { validDueDate } from "./requestDetails";
 export type ResourceType = "UI" | "Logic" | "API" | "DB" | "Permission";
 export interface Basis {
@@ -6,6 +17,11 @@ export interface Basis {
   legacyVersion: string;
   requirementDocumentId?: string;
   confirmationId?: string;
+  screenType?: "new" | "modify";
+}
+export interface SimilarCaseAnalysis {
+  rawResult?: Record<string, unknown>;
+  id: string; analysisId: string; basis: Basis; cases: SimilarCase[]; status: "ready" | "no_matches" | "insufficient_data"; source: "mock" | "server";
 }
 export interface Artifact {
   id?: string;
@@ -21,16 +37,21 @@ export interface Impact {
   current: string;
   proposed: string;
   reason: string;
-  days: number;
+  days?: number;
 }
 export interface Analysis {
+  impactGraph?: ImpactGraph;
+  impactGraphError?: string;
+  similarCases?: SimilarCase[];
+  html?: string;
+  analysisHtmlArtifact?: { id: string; fileName: string; mediaType: string; sizeBytes: number; sha256: string };
   source?: "mock" | "server";
   id?: string;
   basis: Basis;
   impacts: Impact[];
-  totalDays: number;
-  durationDays: number;
-  bufferDays: number;
+  totalDays?: number;
+  durationDays?: number;
+  bufferDays?: number;
 }
 export interface Attachment {
   id?: string;
@@ -43,6 +64,10 @@ export interface Attachment {
   error?: string;
 }
 export interface InputSnapshot {
+  legacyReferenceId?: string;
+  unavailable?: boolean;
+  screenType?: "new" | "modify";
+  desiredDueDate?: string | null;
   requestId: string;
   inputRevision: number;
   title: string;
@@ -50,8 +75,14 @@ export interface InputSnapshot {
   html: string;
   attachmentIds: string[];
   attachmentNames: string[];
+  attachments?: Attachment[];
 }
 export interface RequirementDocument {
+  contentHash?: string;
+  updatedAt?: string;
+  displayTitle?: string;
+  contextDocumentIds?: string[];
+  contextPolicyVersion?: string;
   id: string;
   generationId: string;
   generationNumber: number;
@@ -63,6 +94,10 @@ export interface RequirementDocument {
   formatVersion: string;
 }
 export interface RequirementGeneration {
+  uiInputRevision?: number;
+  phase?: "queued" | "preparing" | "merging_previous" | "generating" | "completed" | "failed";
+  contextDocumentIds?: string[];
+  displayTitle?: string;
   id: string;
   idempotencyKey: string;
   generationNumber: number;
@@ -106,10 +141,14 @@ export interface WorkRequest {
   analysis?: Analysis;
   systemMock?: { basis: Basis };
   report?: Artifact;
+  similarCaseAnalysis?: SimilarCaseAnalysis;
   scopeReviewed: boolean;
   estimateReviewed: boolean;
 }
 export interface Registration {
+  reportId?: string;
+  reviewSummarySnapshot?: string;
+  similarCasesSnapshot?: SimilarCase[];
   id: string;
   key: string;
   registeredAt: string;
@@ -119,6 +158,7 @@ export const basisOf = (r: WorkRequest): Basis => ({
   requestId: r.id,
   revision: r.revision,
   legacyVersion: r.legacyVersion,
+  screenType: r.screenType,
   requirementDocumentId: r.selectedRequirementDocumentId,
   confirmationId: r.activeConfirmationId,
 });
@@ -127,6 +167,7 @@ export const sameBasis = (a?: Basis, b?: Basis) =>
   !!b &&
   a.requestId === b.requestId &&
   a.legacyVersion === b.legacyVersion &&
+  a.screenType === b.screenType &&
   a.requirementDocumentId === b.requirementDocumentId &&
   (a.confirmationId || b.confirmationId
     ? a.confirmationId === b.confirmationId
@@ -155,12 +196,10 @@ export const readyForReview = (r: WorkRequest) =>
   hasConfirmedRequirement(r) && isCurrent(r, r.analysis);
 export const canRegister = (r: WorkRequest) =>
   readyForReview(r) &&
-  isCurrent(r, r.report) &&
-  r.scopeReviewed &&
-  r.estimateReviewed &&
+  isCurrent(r, r.similarCaseAnalysis) &&
   !!r.analysis?.id &&
-  !!r.report?.id &&
-  r.report.analysisId === r.analysis.id;
+  !!r.similarCaseAnalysis?.id &&
+  r.similarCaseAnalysis.analysisId === r.analysis.id;
 export function blankRequest(): WorkRequest {
   return {
     id: crypto.randomUUID(),
@@ -170,7 +209,7 @@ export function blankRequest(): WorkRequest {
     dueDate: "",
     revision: 1,
     inputRevision: 1,
-    legacyVersion: "DEMO-2026.10",
+    legacyVersion: "",
     agreement: "",
     opinion: "",
     attachments: [],
@@ -204,7 +243,7 @@ export function editRequest(
   patch: Partial<WorkRequest>,
 ): WorkRequest {
   if (patch.dueDate !== undefined && !validDueDate(patch.dueDate)) throw new Error("희망 완료일은 4자리 연도의 유효한 날짜로 입력해주세요.");
-  const inputChanged = ["title", "text", "html", "attachments", "dueDate"].some(
+  const inputChanged = ["title", "text", "html", "attachments", "dueDate", "screenType"].some(
     (k) => k in patch,
   );
   const next = {
@@ -294,12 +333,16 @@ export function restoreSelection(
 export function snapshotOf(r: WorkRequest): InputSnapshot {
   return {
     requestId: r.id,
+    legacyReferenceId: r.legacyVersion,
     inputRevision: r.inputRevision,
     title: r.title,
+    screenType: r.screenType,
+    desiredDueDate: r.dueDate || null,
     text: r.text,
     html: r.html,
     attachmentIds: r.attachments.map((a) => a.serverFileId!),
     attachmentNames: r.attachments.map((a) => a.name),
+    attachments: structuredClone(r.attachments),
   };
 }
 export function mergeGeneration(
@@ -318,7 +361,7 @@ export function mergeGeneration(
 }
 export function statusOf(r: WorkRequest) {
   return hasConfirmedRequirement(r)
-    ? isCurrent(r, r.report)
+    ? isCurrent(r, r.similarCaseAnalysis)
       ? "최종 검토"
       : isCurrent(r, r.analysis)
         ? "분석 완료"
@@ -332,6 +375,7 @@ export function statusOf(r: WorkRequest) {
           : "작성 중";
 }
 export interface MockArtifact {
+  screenType?: "new" | "modify";
   id: string;
   requirementDocumentId: string;
   legacyVersion: string;
@@ -345,6 +389,7 @@ export interface MockArtifact {
   unconnectedFeatures: string[];
 }
 export interface MockJob {
+  screenType?: "new" | "modify";
   transport?: "server";
   requestId?: string;
   id: string;
@@ -387,7 +432,7 @@ export const validSelectedMock = (r: WorkRequest) => {
   );
 };
 export const draftFingerprint = (r: WorkRequest) =>
-  JSON.stringify([r.inputRevision, r.selectedRequirementDocumentId]);
+  JSON.stringify([r.inputRevision, r.selectedRequirementDocumentId, appliedDocument(r)?.markdown]);
 export const hasConfirmedRequirement = (r: WorkRequest) => {
   const c = activeConfirmation(r);
   return (

@@ -5,13 +5,14 @@ import { UnderlineTabs } from "../components/shared";
 
 export function DocumentSources({ doc }: { doc: RequirementDocument }) {
   const snapshot = doc.inputSnapshot;
+  const attachmentNames = snapshot.attachmentNames || snapshot.attachmentIds.map((_, index) => `첨부자료 ${index + 1}`);
   const tabs = [
     ["text", "Teams", snapshot.text.trim() ? 1 : 0],
     ["html", "HTML 코드", snapshot.html.trim() ? 1 : 0],
     [
       "files",
-      `첨부파일 (${snapshot.attachmentNames.length})`,
-      snapshot.attachmentNames.length,
+      `첨부파일 (${attachmentNames.length})`,
+      attachmentNames.length,
     ],
   ] as const;
   const [tab, setTab] = useState<string>(
@@ -21,13 +22,9 @@ export function DocumentSources({ doc }: { doc: RequirementDocument }) {
   return (
     <section
       className="workflow-card document-sources"
-      aria-label={`입력 자료 v${doc.generationNumber}`}
+      aria-label={`입력된 요구사항_version${doc.generationNumber}`}
     >
-      <h3>입력 자료 v{doc.generationNumber}</h3>
-      <p className="workflow-info">
-        요구사항 v{doc.generationNumber}.md 생성에 사용된 내용으로, 현재 편집
-        중인 자료와 별도로 보관됩니다.
-      </p>
+      <h3>입력된 요구사항_version{doc.generationNumber}</h3>
       <UnderlineTabs
         className="document-sources-tabs"
         tabs={tabs.map(([id, label, count]) => ({
@@ -88,9 +85,9 @@ export function DocumentSources({ doc }: { doc: RequirementDocument }) {
           <div className="source-body-head">
             <label>생성 당시 첨부파일</label>
           </div>
-          {snapshot.attachmentNames.length ? (
+          {attachmentNames.length ? (
             <ul className="snapshot-file-list">
-              {snapshot.attachmentNames.map((name, index) => (
+              {attachmentNames.map((name, index) => (
                 <li key={`${index}-${snapshot.attachmentIds[index] || name}`}>
                   {name}
                 </li>

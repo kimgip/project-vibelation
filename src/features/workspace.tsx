@@ -4,7 +4,7 @@ export interface WorkspaceProps {
   update: (change: (latest: WorkRequest) => WorkRequest) => void;
   edit: (patch: Partial<WorkRequest>) => boolean | void;
   check: (patch: Partial<WorkRequest>) => void;
-  run: (kind: "analysis" | "report") => void;
+  run: (kind: "analysis" | "similarCaseAnalysis") => void;
   confirmAndAnalyze: (options?: { skipPreview?: boolean }) => void;
   busy: string;
   go: (step: string) => void;

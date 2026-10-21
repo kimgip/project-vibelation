@@ -49,6 +49,7 @@ export function LegacyPicker({ r, edit, go, saved }: WorkspaceProps) {
       cancelled = true;
     };
   }, []);
+  const selectedReference = references.some(ref => ref.id === r.legacyVersion);
   return (
     <>
       <ScreenTitle
@@ -64,18 +65,8 @@ export function LegacyPicker({ r, edit, go, saved }: WorkspaceProps) {
           {error}
         </p>
       )}
+      {!references.length && !error && <p>등록된 레거시 자원이 없습니다. 기존 코드 ZIP을 등록해주세요.</p>}
       <div className="legacy-reference-list">
-        <button
-          className={r.legacyVersion === "DEMO-2026.10" ? "selected" : ""}
-          aria-pressed={r.legacyVersion === "DEMO-2026.10"}
-          onClick={() => edit({ legacyVersion: "DEMO-2026.10" })}
-        >
-          <span>
-            <b>다운로드 센터 · 시연용 틀</b>
-            <small>실제 코드 ZIP 없이 로컬 시연합니다.</small>
-          </span>
-          <LegacyCheck checked={r.legacyVersion === "DEMO-2026.10"} />
-        </button>
         {references
           .slice()
           .reverse()
@@ -126,17 +117,22 @@ export function LegacyPicker({ r, edit, go, saved }: WorkspaceProps) {
         r={r}
         edit={edit}
         initiallyOpen
-        onContinue={() => go("input?view=materials")}
+        onContinue={() => { if (r.screenType && selectedReference) go("input?view=materials"); }}
       />
       <StepFooter
         next={{
           label: "쇳물 녹이기 ›",
-          disabled: !saved,
+          disabled: !saved || !r.screenType || !selectedReference,
           type: "submit",
           form: `request-details-${r.id}`,
           name: "continue",
         }}
-        reason="저장이 완료되면 진행할 수 있어요"
+        nextText={r.requirements.length ? {
+          label: "성분 보기로 돌아가기 ›",
+          disabled: !saved || !r.screenType || !selectedReference,
+          onClick: () => go("input?view=requirements"),
+        } : undefined}
+        reason={!saved ? "저장이 완료되면 진행할 수 있어요" : "신규 또는 수정을 선택해주세요"}
       />
     </>
   );

@@ -29,12 +29,15 @@ export function createGenerationTransport(
       key: string,
       signal: AbortSignal,
       documentId?: string,
+      screenType?: "new" | "modify",
     ) {
       if (!archives.length)
         throw new Error(
           "서버 전송에 사용할 코드 ZIP을 설정에서 등록하고 선택해주세요.",
         );
       const body = generationFormData(file, archives, version);
+      body.append("legacyReferenceId", version);
+      if (screenType) body.append("screenType", screenType);
       if (documentId) body.append("requirementDocumentId", documentId);
       return json(path, signal, {
         method: "POST",
@@ -48,7 +51,8 @@ export function createGenerationTransport(
 
 export const generationBase =
   (import.meta as ImportMeta & { env?: Record<string, string> }).env
-    ?.VITE_GENERATION_API_URL || "";
+    ?.VITE_API_URL ||
+  (import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_GENERATION_API_URL || "";
 export const generationTransport = generationBase
   ? createGenerationTransport(generationBase)
   : undefined;

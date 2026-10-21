@@ -7,8 +7,7 @@
       "path": "demo/download-center/DownloadList.tsx",
       "current": "언어별 개별 다운로드 링크",
       "proposed": "자료 선택 체크박스와 선택 다운로드 영역 추가",
-      "reason": "다중 선택·언어 선택 수용 기준에 연결",
-      "days": 2
+      "reason": "다중 선택·언어 선택 수용 기준에 연결"
     },
     {
       "id": "logic",
@@ -17,8 +16,7 @@
       "path": "demo/download-center/selection.ts",
       "current": "개별 파일 링크 · 상세 모달",
       "proposed": "최대 10개 검증, 기존 모달 스타일 재사용",
-      "reason": "선택 상한과 부분 실패 안내 조건에 연결",
-      "days": 1.5
+      "reason": "선택 상한과 부분 실패 안내 조건에 연결"
     },
     {
       "id": "api",
@@ -27,8 +25,7 @@
       "path": "demo/api/downloads",
       "current": "자료 목록·상세 조회",
       "proposed": "일괄 다운로드 요청 및 ZIP 응답 API 검토",
-      "reason": "언어별 파일 구성·크기 제한 검증 필요",
-      "days": 2
+      "reason": "언어별 파일 구성·크기 제한 검증 필요"
     },
     {
       "id": "db",
@@ -37,8 +34,7 @@
       "path": "demo/schema/download_history",
       "current": "개별 다운로드 이력 (가정)",
       "proposed": "일괄 다운로드와 이력 저장 연계 검토",
-      "reason": "요청한 이력 확인 기능의 저장 근거 필요",
-      "days": 1
+      "reason": "요청한 이력 확인 기능의 저장 근거 필요"
     },
     {
       "id": "permission",
@@ -47,11 +43,7 @@
       "path": "demo/policies/download",
       "current": "기존 개별 파일 권한 (가정)",
       "proposed": "선택한 모든 파일의 서버 권한 확인",
-      "reason": "일괄 처리 시 파일별 접근 범위 보존 필요",
-      "days": 1
+      "reason": "일괄 처리 시 파일별 접근 범위 보존 필요"
     }
-  ],
-  "totalDays": 8.5,
-  "durationDays": 9,
-  "bufferDays": 2
+  ]
 }
