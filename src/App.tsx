@@ -3,7 +3,7 @@ import { Plus, FileText, ChevronRight } from "lucide-react";
 import { useWorkspace } from "./features/useWorkspace";
 import { Landing } from "./features/Landing";
 import { InputPage, AnalysisPage, ReviewPage } from "./features/workspace";
-import { HistoryPage, TeamPage } from "./features/history";
+import { HistoryPage } from "./features/history";
 import { LegacySettings } from "./features/LegacySettings";
 import {
   AppHeader,
@@ -34,8 +34,6 @@ export function App() {
           <LegacySettings />
         ) : w.isHistory ? (
           <HistoryPage items={w.history} id={w.id} />
-        ) : w.isTeam ? (
-          <TeamPage history={w.history} />
         ) : w.r && w.props ? (
           <>
             <WorkflowProgress r={w.r} step={w.step} />
@@ -94,7 +92,6 @@ export function App() {
           <footer className="workflow-page-footer">
             <b>쇳물</b>
             <span>요구사항을 녹여, 기존 틀에 붓다</span>
-            <small>서버 미설정 기능은 로컬 시연으로 동작합니다.</small>
           </footer>
         )}
       </main>

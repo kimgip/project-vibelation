@@ -126,17 +126,22 @@ export function LegacyPicker({ r, edit, go, saved }: WorkspaceProps) {
         r={r}
         edit={edit}
         initiallyOpen
-        onContinue={() => go("input?view=materials")}
+        onContinue={() => { if (r.screenType) go("input?view=materials"); }}
       />
       <StepFooter
         next={{
           label: "쇳물 녹이기 ›",
-          disabled: !saved,
+          disabled: !saved || !r.screenType,
           type: "submit",
           form: `request-details-${r.id}`,
           name: "continue",
         }}
-        reason="저장이 완료되면 진행할 수 있어요"
+        nextText={r.requirements.length ? {
+          label: "성분 보기로 돌아가기 ›",
+          disabled: !saved || !r.screenType,
+          onClick: () => go("input?view=requirements"),
+        } : undefined}
+        reason={!saved ? "저장이 완료되면 진행할 수 있어요" : "신규 또는 수정을 선택해주세요"}
       />
     </>
   );

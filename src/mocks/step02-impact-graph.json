@@ -1,0 +1,792 @@
+{
+  "schemaVersion": "impact-graph-v1",
+  "id": "mock-impact-graph",
+  "revision": 1,
+  "analysisId": "mock",
+  "generatedAt": "2026-10-21T00:00:00Z",
+  "groups": [
+    {
+      "id": "entry",
+      "label": "진입점",
+      "order": 1
+    },
+    {
+      "id": "core",
+      "label": "핵심 자원",
+      "order": 2
+    },
+    {
+      "id": "related",
+      "label": "연관 자원",
+      "order": 3
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n_main",
+      "groupId": "entry",
+      "order": 0,
+      "title": "exShowRmMain",
+      "subtitle": "메인 화면",
+      "resourceType": "UI",
+      "kind": "component",
+      "impactId": null,
+      "action": "verify_only",
+      "actionReason": "화면 이동 호출만 있어 코드 수정은 없습니다. 이동 후 미리보기 노출에 문제가 없는지만 확인합니다.",
+      "evidenceIds": [
+        "ev-0-0"
+      ]
+    },
+    {
+      "id": "n_prod",
+      "groupId": "entry",
+      "order": 1,
+      "title": "exShowRmProdCatalog",
+      "subtitle": "제품 카탈로그",
+      "resourceType": "UI",
+      "kind": "component",
+      "impactId": null,
+      "action": "verify_only",
+      "actionReason": "이동 호출만 있습니다. 파라미터 전달 방식이 바뀌지 않는지 확인합니다.",
+      "evidenceIds": [
+        "ev-1-0"
+      ]
+    },
+    {
+      "id": "n_ind",
+      "groupId": "entry",
+      "order": 2,
+      "title": "exShowRmIndustryCatalog",
+      "subtitle": "산업별 카탈로그",
+      "resourceType": "UI",
+      "kind": "component",
+      "impactId": null,
+      "action": "verify_only",
+      "actionReason": "이동 호출만 있습니다. 확인만 합니다.",
+      "evidenceIds": [
+        "ev-2-0"
+      ]
+    },
+    {
+      "id": "n_popup",
+      "groupId": "entry",
+      "order": 3,
+      "title": "exContentPopUp",
+      "subtitle": "콘텐츠 팝업",
+      "resourceType": "UI",
+      "kind": "component",
+      "impactId": null,
+      "action": "verify_only",
+      "actionReason": "URL을 직접 조립해 이동합니다. 경로(/exshowrmdownloadctrcatalog)가 유지되는지 확인합니다.",
+      "evidenceIds": [
+        "ev-3-0"
+      ]
+    },
+    {
+      "id": "n_m2a",
+      "groupId": "entry",
+      "order": 4,
+      "title": "exM2A010010160",
+      "subtitle": "타 화면",
+      "resourceType": "UI",
+      "kind": "component",
+      "impactId": null,
+      "action": "verify_only",
+      "actionReason": "URL 직접 조립 이동입니다. 확인만 합니다.",
+      "evidenceIds": [
+        "ev-4-0"
+      ]
+    },
+    {
+      "id": "n_voc",
+      "groupId": "entry",
+      "order": 5,
+      "title": "exVocRegister",
+      "subtitle": "VOC 등록",
+      "resourceType": "UI",
+      "kind": "component",
+      "impactId": null,
+      "action": "verify_only",
+      "actionReason": "URL 직접 조립 이동입니다. 확인만 합니다.",
+      "evidenceIds": [
+        "ev-5-0"
+      ]
+    },
+    {
+      "id": "n_route",
+      "groupId": "core",
+      "order": 6,
+      "title": "exShowRmUtils 라우팅 맵",
+      "subtitle": "'exshowrmdownloadctrcatalog'",
+      "resourceType": "Logic",
+      "kind": "route",
+      "impactId": null,
+      "action": "verify_only",
+      "actionReason": "경로 이름과 컴포넌트 이름 매핑입니다. 컴포넌트명을 바꾸지 않으면 수정하지 않습니다.",
+      "evidenceIds": [
+        "ev-6-0"
+      ]
+    },
+    {
+      "id": "n_lwc",
+      "groupId": "core",
+      "order": 7,
+      "title": "exShowRmDownloadCtrCatalog",
+      "subtitle": "LWC html / js (핵심)",
+      "resourceType": "UI",
+      "kind": "component",
+      "impactId": null,
+      "action": "direct_change",
+      "actionReason": "카드에 미리보기 진입점과 모달을 추가하고, 미리보기 상태/포커스/접근성 처리를 넣습니다. 탭 초기화가 setTimeout + click() 기반이므로 카드 DOM 변경 시 초기화가 깨지지 않는지 확인이 필요합니다.",
+      "evidenceIds": [
+        "ev-7-0",
+        "ev-7-1",
+        "ev-7-2"
+      ]
+    },
+    {
+      "id": "n_all",
+      "groupId": "related",
+      "order": 8,
+      "title": "getAllProductCatalogList",
+      "subtitle": "EX_ShowRmDownloadCatalogController",
+      "resourceType": "API",
+      "kind": "function",
+      "impactId": null,
+      "action": "direct_change",
+      "actionReason": "화면이 실제로 쓰는 메서드입니다. 미리보기 정보(페이지 수, 이미지 정보, 파일 크기, 갱신일)를 여기서 내려주거나 별도 메서드를 추가합니다. 한국어 전용 카탈로그는 영/중/일 화면에서 제거하는 로직이 있어 미리보기도 같은 기준을 따라야 합니다.",
+      "evidenceIds": [
+        "ev-8-0",
+        "ev-8-1"
+      ]
+    },
+    {
+      "id": "n_di",
+      "groupId": "related",
+      "order": 9,
+      "title": "DataItem / FileInfo",
+      "subtitle": "반환 구조",
+      "resourceType": "DB",
+      "kind": "model",
+      "impactId": null,
+      "action": "direct_change",
+      "actionReason": "미리보기 필드를 추가할 위치입니다. @AuraEnabled 필드 추가 시 LWC에서 같은 이름으로 읽습니다.",
+      "evidenceIds": [
+        "ev-9-0"
+      ]
+    },
+    {
+      "id": "n_test",
+      "groupId": "related",
+      "order": 10,
+      "title": "EX_ShowRmDownloadCatalogController_test",
+      "subtitle": "테스트 클래스",
+      "resourceType": "Logic",
+      "kind": "test",
+      "impactId": null,
+      "action": "related_change",
+      "actionReason": "새 필드/메서드에 대한 테스트를 추가해 커버리지를 유지합니다. 기존 테스트는 레거시 메서드도 함께 호출합니다.",
+      "evidenceIds": [
+        "ev-10-0",
+        "ev-10-1"
+      ]
+    },
+    {
+      "id": "n_css1",
+      "groupId": "related",
+      "order": 11,
+      "title": "54A00-app.css",
+      "subtitle": "ShowroomResource.zip 내부",
+      "resourceType": "UI",
+      "kind": "style",
+      "impactId": null,
+      "action": "optional_change",
+      "actionReason": "카드 스타일의 실제 출처입니다. 컴포넌트에서 appendCss로 동적 로드합니다. 신규 스타일은 컴포넌트 .css에 접두어 클래스로 넣는 편이 영향이 작습니다.",
+      "evidenceIds": [
+        "ev-11-0",
+        "ev-11-1"
+      ]
+    },
+    {
+      "id": "n_css2",
+      "groupId": "related",
+      "order": 12,
+      "title": "54A00.css",
+      "subtitle": "-app.css 와 쌍",
+      "resourceType": "UI",
+      "kind": "style",
+      "impactId": null,
+      "action": "optional_change",
+      "actionReason": "-app.css 와 짝을 이루는 파일입니다. 공용 CSS를 고친다면 둘 중 하나만 고쳐서 불일치가 생기지 않게 함께 수정합니다.",
+      "evidenceIds": [
+        "ev-12-0"
+      ]
+    },
+    {
+      "id": "n_css3",
+      "groupId": "related",
+      "order": 13,
+      "title": "컴포넌트 .css",
+      "subtitle": "전체 주석 처리됨",
+      "resourceType": "UI",
+      "kind": "style",
+      "impactId": null,
+      "action": "excluded",
+      "actionReason": "파일 전체가 /* ... */ 로 주석 처리되어 있어 현재 적용되는 스타일이 아닙니다. 기존 내용을 수정해도 화면에는 변화가 없습니다. 신규 스타일은 주석 밖에 추가해야 합니다.",
+      "evidenceIds": [
+        "ev-13-0"
+      ]
+    },
+    {
+      "id": "n_dl",
+      "groupId": "related",
+      "order": 14,
+      "title": "fnFileDownload",
+      "subtitle": "exShowRmUtils 다운로드",
+      "resourceType": "Logic",
+      "kind": "function",
+      "impactId": null,
+      "action": "verify_only",
+      "actionReason": "기존 다운로드를 재사용합니다. iOS/비iOS 분기와 앱 환경 알림이 있으므로 미리보기 추가 후에도 동작이 같은지 확인합니다.",
+      "evidenceIds": [
+        "ev-14-0"
+      ]
+    },
+    {
+      "id": "n_old",
+      "groupId": "related",
+      "order": 15,
+      "title": "getProductCatalogList",
+      "subtitle": "다운로드 센터 컨트롤러 / 화면 미사용",
+      "resourceType": "API",
+      "kind": "function",
+      "impactId": null,
+      "action": "excluded",
+      "actionReason": "이 화면의 LWC는 호출하지 않습니다. 여기에 필드를 추가해도 UI에 반영되지 않습니다. 테스트 클래스만 호출하므로 수정 대상에서 제외합니다.",
+      "evidenceIds": [
+        "ev-15-0",
+        "ev-15-1"
+      ]
+    },
+    {
+      "id": "n_other",
+      "groupId": "related",
+      "order": 16,
+      "title": "EX_ShowRmCatalogController",
+      "subtitle": "이름만 같은 다른 컨트롤러",
+      "resourceType": "API",
+      "kind": "function",
+      "impactId": null,
+      "action": "excluded",
+      "actionReason": "제품 상세 화면용 컨트롤러입니다. getProductCatalogList 이름이 같아 혼동하기 쉽지만 다운로드 센터와 무관합니다.",
+      "evidenceIds": [
+        "ev-16-0",
+        "ev-16-1",
+        "ev-16-2"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-0",
+      "sourceId": "n_main",
+      "targetId": "n_route",
+      "relation": "other",
+      "direction": "directed",
+      "assessment": "observed_static",
+      "evidenceIds": [],
+      "note": "첨부 HTML의 연결 예시 · 실제 관계 미검증"
+    },
+    {
+      "id": "edge-1",
+      "sourceId": "n_prod",
+      "targetId": "n_route",
+      "relation": "other",
+      "direction": "directed",
+      "assessment": "observed_static",
+      "evidenceIds": [],
+      "note": "첨부 HTML의 연결 예시 · 실제 관계 미검증"
+    },
+    {
+      "id": "edge-2",
+      "sourceId": "n_ind",
+      "targetId": "n_route",
+      "relation": "other",
+      "direction": "directed",
+      "assessment": "observed_static",
+      "evidenceIds": [],
+      "note": "첨부 HTML의 연결 예시 · 실제 관계 미검증"
+    },
+    {
+      "id": "edge-3",
+      "sourceId": "n_popup",
+      "targetId": "n_lwc",
+      "relation": "other",
+      "direction": "directed",
+      "assessment": "inferred",
+      "evidenceIds": [],
+      "note": "첨부 HTML의 연결 예시 · 실제 관계 미검증"
+    },
+    {
+      "id": "edge-4",
+      "sourceId": "n_m2a",
+      "targetId": "n_lwc",
+      "relation": "other",
+      "direction": "directed",
+      "assessment": "inferred",
+      "evidenceIds": [],
+      "note": "첨부 HTML의 연결 예시 · 실제 관계 미검증"
+    },
+    {
+      "id": "edge-5",
+      "sourceId": "n_voc",
+      "targetId": "n_lwc",
+      "relation": "other",
+      "direction": "directed",
+      "assessment": "inferred",
+      "evidenceIds": [],
+      "note": "첨부 HTML의 연결 예시 · 실제 관계 미검증"
+    },
+    {
+      "id": "edge-6",
+      "sourceId": "n_route",
+      "targetId": "n_lwc",
+      "relation": "other",
+      "direction": "directed",
+      "assessment": "observed_static",
+      "evidenceIds": [],
+      "note": "첨부 HTML의 연결 예시 · 실제 관계 미검증"
+    },
+    {
+      "id": "edge-7",
+      "sourceId": "n_lwc",
+      "targetId": "n_all",
+      "relation": "other",
+      "direction": "directed",
+      "assessment": "observed_static",
+      "evidenceIds": [],
+      "note": "첨부 HTML의 연결 예시 · 실제 관계 미검증"
+    },
+    {
+      "id": "edge-8",
+      "sourceId": "n_lwc",
+      "targetId": "n_dl",
+      "relation": "other",
+      "direction": "directed",
+      "assessment": "observed_static",
+      "evidenceIds": [],
+      "note": "첨부 HTML의 연결 예시 · 실제 관계 미검증"
+    },
+    {
+      "id": "edge-9",
+      "sourceId": "n_lwc",
+      "targetId": "n_css1",
+      "relation": "other",
+      "direction": "directed",
+      "assessment": "observed_static",
+      "evidenceIds": [],
+      "note": "첨부 HTML의 연결 예시 · 실제 관계 미검증"
+    },
+    {
+      "id": "edge-10",
+      "sourceId": "n_all",
+      "targetId": "n_di",
+      "relation": "other",
+      "direction": "directed",
+      "assessment": "observed_static",
+      "evidenceIds": [],
+      "note": "첨부 HTML의 연결 예시 · 실제 관계 미검증"
+    },
+    {
+      "id": "edge-11",
+      "sourceId": "n_test",
+      "targetId": "n_all",
+      "relation": "other",
+      "direction": "directed",
+      "assessment": "observed_static",
+      "evidenceIds": [],
+      "note": "첨부 HTML의 연결 예시 · 실제 관계 미검증"
+    },
+    {
+      "id": "edge-12",
+      "sourceId": "n_test",
+      "targetId": "n_old",
+      "relation": "other",
+      "direction": "directed",
+      "assessment": "inferred",
+      "evidenceIds": [],
+      "note": "첨부 HTML의 연결 예시 · 실제 관계 미검증"
+    },
+    {
+      "id": "edge-13",
+      "sourceId": "n_css1",
+      "targetId": "n_css2",
+      "relation": "other",
+      "direction": "directed",
+      "assessment": "inferred",
+      "evidenceIds": [],
+      "note": "첨부 HTML의 연결 예시 · 실제 관계 미검증"
+    },
+    {
+      "id": "edge-14",
+      "sourceId": "n_lwc",
+      "targetId": "n_css3",
+      "relation": "other",
+      "direction": "directed",
+      "assessment": "inferred",
+      "evidenceIds": [],
+      "note": "첨부 HTML의 연결 예시 · 실제 관계 미검증"
+    },
+    {
+      "id": "edge-15",
+      "sourceId": "n_other",
+      "targetId": "n_old",
+      "relation": "other",
+      "direction": "directed",
+      "assessment": "inferred",
+      "evidenceIds": [],
+      "note": "첨부 HTML의 연결 예시 · 실제 관계 미검증"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "ev-0-0",
+      "sourcePackageId": "reference-html",
+      "sourceHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "path": "force-app/main/default/lwc/exShowRmMain/exShowRmMain.js",
+      "archiveEntryPath": null,
+      "symbol": null,
+      "lineStart": 514,
+      "lineEnd": 514,
+      "snippet": "fnGoToPage('exshowrmdownloadctrcatalog', param)",
+      "method": "manual",
+      "note": "첨부 HTML에서 옮긴 시연 자료입니다. 실제 코드 검증 결과가 아닙니다."
+    },
+    {
+      "id": "ev-1-0",
+      "sourcePackageId": "reference-html",
+      "sourceHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "path": "force-app/main/default/lwc/exShowRmProdCatalog/exShowRmProdCatalog.js",
+      "archiveEntryPath": null,
+      "symbol": null,
+      "lineStart": 85,
+      "lineEnd": 85,
+      "snippet": "exShowRmUtils.goToPage('exshowrmdownloadctrcatalog', param)",
+      "method": "manual",
+      "note": "첨부 HTML에서 옮긴 시연 자료입니다. 실제 코드 검증 결과가 아닙니다."
+    },
+    {
+      "id": "ev-2-0",
+      "sourcePackageId": "reference-html",
+      "sourceHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "path": "force-app/main/default/lwc/exShowRmIndustryCatalog/exShowRmIndustryCatalog.js",
+      "archiveEntryPath": null,
+      "symbol": null,
+      "lineStart": 86,
+      "lineEnd": 86,
+      "snippet": "exShowRmUtils.goToPage('exshowrmdownloadctrcatalog', param)",
+      "method": "manual",
+      "note": "첨부 HTML에서 옮긴 시연 자료입니다. 실제 코드 검증 결과가 아닙니다."
+    },
+    {
+      "id": "ev-3-0",
+      "sourcePackageId": "reference-html",
+      "sourceHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "path": "force-app/main/default/lwc/exContentPopUp/exContentPopUp.js",
+      "archiveEntryPath": null,
+      "symbol": null,
+      "lineStart": 468,
+      "lineEnd": 468,
+      "snippet": "window.location.origin + utils.getPath() + \"/exshowrmdownloadctrcatalog\"",
+      "method": "manual",
+      "note": "첨부 HTML에서 옮긴 시연 자료입니다. 실제 코드 검증 결과가 아닙니다."
+    },
+    {
+      "id": "ev-4-0",
+      "sourcePackageId": "reference-html",
+      "sourceHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "path": "force-app/main/default/lwc/exM2A010010160/exM2A010010160.js",
+      "archiveEntryPath": null,
+      "symbol": null,
+      "lineStart": 2502,
+      "lineEnd": 2502,
+      "snippet": "changeUrl = ... + \"/exshowrmdownloadctrcatalog\"",
+      "method": "manual",
+      "note": "첨부 HTML에서 옮긴 시연 자료입니다. 실제 코드 검증 결과가 아닙니다."
+    },
+    {
+      "id": "ev-5-0",
+      "sourcePackageId": "reference-html",
+      "sourceHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "path": "force-app/main/default/lwc/exVocRegister/exVocRegister.js",
+      "archiveEntryPath": null,
+      "symbol": null,
+      "lineStart": 3205,
+      "lineEnd": 3205,
+      "snippet": "changeUrl = ... + \"/exshowrmdownloadctrcatalog\"",
+      "method": "manual",
+      "note": "첨부 HTML에서 옮긴 시연 자료입니다. 실제 코드 검증 결과가 아닙니다."
+    },
+    {
+      "id": "ev-6-0",
+      "sourcePackageId": "reference-html",
+      "sourceHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "path": "force-app/main/default/lwc/exShowRmUtils/exShowRmUtils.js",
+      "archiveEntryPath": null,
+      "symbol": null,
+      "lineStart": 618,
+      "lineEnd": 618,
+      "snippet": "'exshowrmdownloadctrcatalog': {d: 'exShowRmDownloadCtrCatalog'}",
+      "method": "manual",
+      "note": "첨부 HTML에서 옮긴 시연 자료입니다. 실제 코드 검증 결과가 아닙니다."
+    },
+    {
+      "id": "ev-7-0",
+      "sourcePackageId": "reference-html",
+      "sourceHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "path": "force-app/main/default/lwc/exShowRmDownloadCtrCatalog/exShowRmDownloadCtrCatalog.js",
+      "archiveEntryPath": null,
+      "symbol": null,
+      "lineStart": 19,
+      "lineEnd": 19,
+      "snippet": "export default class ExShowRmDownloadCtrCatalog",
+      "method": "manual",
+      "note": "첨부 HTML에서 옮긴 시연 자료입니다. 실제 코드 검증 결과가 아닙니다."
+    },
+    {
+      "id": "ev-7-1",
+      "sourcePackageId": "reference-html",
+      "sourceHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "path": "force-app/main/default/lwc/exShowRmDownloadCtrCatalog/exShowRmDownloadCtrCatalog.js",
+      "archiveEntryPath": null,
+      "symbol": null,
+      "lineStart": 105,
+      "lineEnd": 105,
+      "snippet": "await getAllProductCatalogList({language: LANG})  ← 화면이 실제 호출하는 Apex",
+      "method": "manual",
+      "note": "첨부 HTML에서 옮긴 시연 자료입니다. 실제 코드 검증 결과가 아닙니다."
+    },
+    {
+      "id": "ev-7-2",
+      "sourcePackageId": "reference-html",
+      "sourceHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "path": "force-app/main/default/lwc/exShowRmDownloadCtrCatalog/exShowRmDownloadCtrCatalog.js",
+      "archiveEntryPath": null,
+      "symbol": null,
+      "lineStart": 259,
+      "lineEnd": 259,
+      "snippet": "fnChgPageParam(param, this.isSaveLog, 'exShowRmDownloadCtrCatalog')",
+      "method": "manual",
+      "note": "첨부 HTML에서 옮긴 시연 자료입니다. 실제 코드 검증 결과가 아닙니다."
+    },
+    {
+      "id": "ev-8-0",
+      "sourcePackageId": "reference-html",
+      "sourceHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "path": "force-app/main/default/classes/EX_ShowRmDownloadCatalogController.cls",
+      "archiveEntryPath": null,
+      "symbol": null,
+      "lineStart": 65,
+      "lineEnd": 65,
+      "snippet": "public static List<DataItem> getAllProductCatalogList(String language)",
+      "method": "manual",
+      "note": "첨부 HTML에서 옮긴 시연 자료입니다. 실제 코드 검증 결과가 아닙니다."
+    },
+    {
+      "id": "ev-8-1",
+      "sourcePackageId": "reference-html",
+      "sourceHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "path": "force-app/main/default/classes/EX_ShowRmDownloadCatalogController.cls",
+      "archiveEntryPath": null,
+      "symbol": null,
+      "lineStart": 9,
+      "lineEnd": 9,
+      "snippet": "public without sharing class  ← 권한 우회 클래스, 원문 URL 노출 주의",
+      "method": "manual",
+      "note": "첨부 HTML에서 옮긴 시연 자료입니다. 실제 코드 검증 결과가 아닙니다."
+    },
+    {
+      "id": "ev-9-0",
+      "sourcePackageId": "reference-html",
+      "sourceHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "path": "force-app/main/default/classes/EX_ShowRmDownloadCatalogController.cls",
+      "archiveEntryPath": null,
+      "symbol": null,
+      "lineStart": 458,
+      "lineEnd": 458,
+      "snippet": "public class DataItem { catalogId, catalogImg, catalogName, fileList, lv1Name, lv1Id }",
+      "method": "manual",
+      "note": "첨부 HTML에서 옮긴 시연 자료입니다. 실제 코드 검증 결과가 아닙니다."
+    },
+    {
+      "id": "ev-10-0",
+      "sourcePackageId": "reference-html",
+      "sourceHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "path": "force-app/main/default/classes/EX_ShowRmDownloadCatalogController_test.cls",
+      "archiveEntryPath": null,
+      "symbol": null,
+      "lineStart": 60,
+      "lineEnd": 60,
+      "snippet": "getProductCatalogList('','열연')",
+      "method": "manual",
+      "note": "첨부 HTML에서 옮긴 시연 자료입니다. 실제 코드 검증 결과가 아닙니다."
+    },
+    {
+      "id": "ev-10-1",
+      "sourcePackageId": "reference-html",
+      "sourceHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "path": "force-app/main/default/classes/EX_ShowRmDownloadCatalogController_test.cls",
+      "archiveEntryPath": null,
+      "symbol": null,
+      "lineStart": 70,
+      "lineEnd": 70,
+      "snippet": "getAllProductCatalogList('ko') (en / ja / zh 도 호출)",
+      "method": "manual",
+      "note": "첨부 HTML에서 옮긴 시연 자료입니다. 실제 코드 검증 결과가 아닙니다."
+    },
+    {
+      "id": "ev-11-0",
+      "sourcePackageId": "reference-html",
+      "sourceHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "path": "force-app/main/default/lwc/exShowRmDownloadCtrCatalog/exShowRmDownloadCtrCatalog.js",
+      "archiveEntryPath": null,
+      "symbol": null,
+      "lineStart": 31,
+      "lineEnd": 31,
+      "snippet": "cssPath = '/resource/css/page/54/54A00-app.css'",
+      "method": "manual",
+      "note": "첨부 HTML에서 옮긴 시연 자료입니다. 실제 코드 검증 결과가 아닙니다."
+    },
+    {
+      "id": "ev-11-1",
+      "sourcePackageId": "reference-html",
+      "sourceHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "path": "force-app/main/default/staticresources/ShowroomResource.zip",
+      "archiveEntryPath": null,
+      "symbol": null,
+      "lineStart": null,
+      "lineEnd": null,
+      "snippet": "resource/css/page/54/54A00-app.css (4,673 bytes)",
+      "method": "manual",
+      "note": "첨부 HTML에서 옮긴 시연 자료입니다. 실제 코드 검증 결과가 아닙니다."
+    },
+    {
+      "id": "ev-12-0",
+      "sourcePackageId": "reference-html",
+      "sourceHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "path": "force-app/main/default/staticresources/ShowroomResource.zip",
+      "archiveEntryPath": null,
+      "symbol": null,
+      "lineStart": null,
+      "lineEnd": null,
+      "snippet": "resource/css/page/54/54A00.css (3,413 bytes)",
+      "method": "manual",
+      "note": "첨부 HTML에서 옮긴 시연 자료입니다. 실제 코드 검증 결과가 아닙니다."
+    },
+    {
+      "id": "ev-13-0",
+      "sourcePackageId": "reference-html",
+      "sourceHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "path": "force-app/main/default/lwc/exShowRmDownloadCtrCatalog/exShowRmDownloadCtrCatalog.css",
+      "archiveEntryPath": null,
+      "symbol": null,
+      "lineStart": 1,
+      "lineEnd": 1,
+      "snippet": "/* ... }*/  (전체 주석)",
+      "method": "manual",
+      "note": "첨부 HTML에서 옮긴 시연 자료입니다. 실제 코드 검증 결과가 아닙니다."
+    },
+    {
+      "id": "ev-14-0",
+      "sourcePackageId": "reference-html",
+      "sourceHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "path": "force-app/main/default/lwc/exShowRmUtils/exShowRmUtils.js",
+      "archiveEntryPath": null,
+      "symbol": null,
+      "lineStart": 213,
+      "lineEnd": 213,
+      "snippet": "export async function fnFileDownload(recordId, language)",
+      "method": "manual",
+      "note": "첨부 HTML에서 옮긴 시연 자료입니다. 실제 코드 검증 결과가 아닙니다."
+    },
+    {
+      "id": "ev-15-0",
+      "sourcePackageId": "reference-html",
+      "sourceHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "path": "force-app/main/default/classes/EX_ShowRmDownloadCatalogController.cls",
+      "archiveEntryPath": null,
+      "symbol": null,
+      "lineStart": 316,
+      "lineEnd": 316,
+      "snippet": "public static List<DataItem> getProductCatalogList(String language, String lv1)",
+      "method": "manual",
+      "note": "첨부 HTML에서 옮긴 시연 자료입니다. 실제 코드 검증 결과가 아닙니다."
+    },
+    {
+      "id": "ev-15-1",
+      "sourcePackageId": "reference-html",
+      "sourceHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "path": "force-app/main/default/lwc/exShowRmDownloadCtrCatalog/exShowRmDownloadCtrCatalog.js",
+      "archiveEntryPath": null,
+      "symbol": null,
+      "lineStart": 12,
+      "lineEnd": 12,
+      "snippet": "화면은 getLabelWrappers / getCatalogList / getAllProductCatalogList 3개만 import",
+      "method": "manual",
+      "note": "첨부 HTML에서 옮긴 시연 자료입니다. 실제 코드 검증 결과가 아닙니다."
+    },
+    {
+      "id": "ev-16-0",
+      "sourcePackageId": "reference-html",
+      "sourceHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "path": "force-app/main/default/classes/EX_ShowRmCatalogController.cls",
+      "archiveEntryPath": null,
+      "symbol": null,
+      "lineStart": 43,
+      "lineEnd": 43,
+      "snippet": "public static List<DataItem> getProductCatalogList(String language, String lv1)",
+      "method": "manual",
+      "note": "첨부 HTML에서 옮긴 시연 자료입니다. 실제 코드 검증 결과가 아닙니다."
+    },
+    {
+      "id": "ev-16-1",
+      "sourcePackageId": "reference-html",
+      "sourceHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "path": "force-app/main/default/lwc/exShowRmSpecification/exShowRmSpecification.js",
+      "archiveEntryPath": null,
+      "symbol": null,
+      "lineStart": 4,
+      "lineEnd": 4,
+      "snippet": "import getProductCatalogList from EX_ShowRmCatalogController",
+      "method": "manual",
+      "note": "첨부 HTML에서 옮긴 시연 자료입니다. 실제 코드 검증 결과가 아닙니다."
+    },
+    {
+      "id": "ev-16-2",
+      "sourcePackageId": "reference-html",
+      "sourceHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "path": "force-app/main/default/lwc/exShowRmProductMain/exShowRmProductMain.js",
+      "archiveEntryPath": null,
+      "symbol": null,
+      "lineStart": 15,
+      "lineEnd": 15,
+      "snippet": "import getProdCatalogList from EX_ShowRmCatalogController",
+      "method": "manual",
+      "note": "첨부 HTML에서 옮긴 시연 자료입니다. 실제 코드 검증 결과가 아닙니다."
+    }
+  ],
+  "coverage": {
+    "status": "partial",
+    "methods": [
+      "manual"
+    ],
+    "runtimeVerified": false,
+    "limits": [],
+    "warnings": [
+      {
+        "code": "MOCK_REFERENCE",
+        "message": "첨부 HTML 기반 시연 데이터입니다. 코드 검색·실행 결과가 아닙니다."
+      }
+    ]
+  }
+}

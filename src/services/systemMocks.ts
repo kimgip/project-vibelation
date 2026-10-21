@@ -33,10 +33,14 @@ export const systemMockService = {
     doc: RequirementDocument,
     legacyVersion: string,
     key: string,
+    screenType?: "new" | "modify",
   ): Promise<MockJob> {
     const rows = load();
     const existing = rows.find((j) => j.idempotencyKey === key);
-    if (existing) return existing;
+    if (existing) {
+      if (existing.requirementDocumentId !== doc.id || existing.legacyVersion !== legacyVersion || existing.screenType !== screenType) throw new Error("같은 작업 키에 다른 생성 기준을 사용할 수 없습니다.");
+      return existing;
+    }
     if (generationTransport) {
       const requestId = doc.inputSnapshot.requestId;
       const archives = await sourcesForVersion(legacyVersion);
@@ -48,6 +52,7 @@ export const systemMockService = {
         key,
         new AbortController().signal,
         doc.id,
+        screenType,
       );
       if (
         typeof response.id !== "string" ||
@@ -61,6 +66,7 @@ export const systemMockService = {
         idempotencyKey: key,
         requirementDocumentId: doc.id,
         legacyVersion,
+        screenType,
         generationNumber: 1,
         status: response.status,
         createdAt: new Date().toISOString(),
@@ -73,6 +79,7 @@ export const systemMockService = {
       idempotencyKey: key,
       requirementDocumentId: doc.id,
       legacyVersion,
+      screenType,
       generationNumber:
         Math.max(
           0,
@@ -119,13 +126,15 @@ export const systemMockService = {
           !artifact.html.trim() ||
           artifact.html.length > 2000000 ||
           artifact.requirementDocumentId !== job.requirementDocumentId ||
-          artifact.legacyVersion !== job.legacyVersion
+          artifact.legacyVersion !== job.legacyVersion ||
+          artifact.screenType !== job.screenType
         )
           throw new Error("Mock HTML 또는 생성 기준이 요청과 다릅니다.");
         next.artifact = {
           id: typeof artifact.id === "string" ? artifact.id : job.id,
           requirementDocumentId: job.requirementDocumentId,
           legacyVersion: job.legacyVersion,
+          screenType: job.screenType,
           generationNumber: job.generationNumber,
           createdAt: new Date().toISOString(),
           source: "server",
@@ -148,6 +157,7 @@ export const systemMockService = {
         id: crypto.randomUUID(),
         requirementDocumentId: job.requirementDocumentId,
         legacyVersion: job.legacyVersion,
+        screenType: job.screenType,
         generationNumber: job.generationNumber,
         createdAt: new Date().toISOString(),
         source: systemMockFixture.source,

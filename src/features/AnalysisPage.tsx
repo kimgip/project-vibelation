@@ -1,3 +1,4 @@
+import { ImpactGraph } from "../components/ImpactGraph";
 import { useState } from "react";
 import {
   hasConfirmedRequirement,
@@ -10,7 +11,6 @@ import {
   StepFooter,
 } from "../components/WorkflowShell";
 import { Empty, LaneBadge, Tag } from "../components/shared";
-import { generationBase } from "../services/generationTransport";
 import type { WorkspaceProps } from "./workspace";
 export function AnalysisPage({
   r,
@@ -31,11 +31,6 @@ export function AnalysisPage({
       />
       <RequestContext r={r} edit={edit} />
       <div className="workflow-notice">
-        <span>
-          {generationBase
-            ? "분석 실행 시 확정 MD와 선택한 코드 ZIP을 서버로 전송합니다."
-            : "로컬 시연 · 다운로드 센터 고정 시나리오이며 실제 코드 ZIP을 분석하지 않습니다."}
-        </span>
         <button
           disabled={!saved || !!busy || !hasConfirmedRequirement(r)}
           onClick={() => run("analysis")}
@@ -47,6 +42,8 @@ export function AnalysisPage({
               : "레거시 분석"}
         </button>
       </div>
+      {isCurrent(r, r.analysis) && r.analysis?.impactGraphError && <p role="alert">영향도 지도 데이터 오류 ({r.analysis.impactGraphError}). 자원 상세를 확인해주세요.</p>}
+      {isCurrent(r, r.analysis) && r.analysis?.impactGraph && <ImpactGraph graph={r.analysis.impactGraph} analysisId={r.analysis.id} />}
       {item ? (
         <div className="analysis-grid">
           <section className="panel">
@@ -80,7 +77,6 @@ export function AnalysisPage({
               <div className="diff before">
                 <b>
                   현재 구조
-                  {r.analysis?.source !== "server" ? " · 시연 가정" : ""}
                 </b>
                 <p>{item.current}</p>
               </div>
@@ -96,13 +92,7 @@ export function AnalysisPage({
               <p>
                 <Tag>잠정 공수 {item.days}일</Tag>
               </p>
-              <small>
-                출처:{" "}
-                {r.analysis?.source === "server"
-                  ? "서버 분석 결과"
-                  : "다운로드 센터 샘플"}
-                . 실제 변경 전 담당자 검토가 필요합니다.
-              </small>
+
             </div>
           </section>
         </div>

@@ -60,7 +60,6 @@ export function Brand() {
 const icon = (name: string) => `${import.meta.env.BASE_URL}brand/${name}.svg`;
 const menuLinks = [
   ["/history", "history", "과거 검토 이력", "과거에 준비를 마친 쇳물 기록"],
-  ["/team", "team", "팀 진행 현황", "팀원별 진행 중인 SR"],
   ["/settings/legacy", "settings", "설정", "레거시 틀 관리"],
 ] as const;
 export function BrandNavigation({

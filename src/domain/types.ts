@@ -1,3 +1,4 @@
+import type { ImpactGraph } from "./impactGraph";
 import { validDueDate } from "./requestDetails";
 export type ResourceType = "UI" | "Logic" | "API" | "DB" | "Permission";
 export interface Basis {
@@ -6,6 +7,7 @@ export interface Basis {
   legacyVersion: string;
   requirementDocumentId?: string;
   confirmationId?: string;
+  screenType?: "new" | "modify";
 }
 export interface Artifact {
   id?: string;
@@ -24,6 +26,11 @@ export interface Impact {
   days: number;
 }
 export interface Analysis {
+  impactGraph?: ImpactGraph;
+  impactGraphError?: string;
+  similarCases?: { title: string; reason: string; difference: string }[];
+  html?: string;
+  analysisHtmlArtifact?: { id: string; fileName: string; mediaType: string; sizeBytes: number; sha256: string };
   source?: "mock" | "server";
   id?: string;
   basis: Basis;
@@ -43,6 +50,10 @@ export interface Attachment {
   error?: string;
 }
 export interface InputSnapshot {
+  legacyReferenceId?: string;
+  unavailable?: boolean;
+  screenType?: "new" | "modify";
+  desiredDueDate?: string | null;
   requestId: string;
   inputRevision: number;
   title: string;
@@ -50,8 +61,12 @@ export interface InputSnapshot {
   html: string;
   attachmentIds: string[];
   attachmentNames: string[];
+  attachments?: Attachment[];
 }
 export interface RequirementDocument {
+  displayTitle?: string;
+  contextDocumentIds?: string[];
+  contextPolicyVersion?: string;
   id: string;
   generationId: string;
   generationNumber: number;
@@ -63,6 +78,10 @@ export interface RequirementDocument {
   formatVersion: string;
 }
 export interface RequirementGeneration {
+  uiInputRevision?: number;
+  phase?: "queued" | "preparing" | "merging_previous" | "generating" | "completed" | "failed";
+  contextDocumentIds?: string[];
+  displayTitle?: string;
   id: string;
   idempotencyKey: string;
   generationNumber: number;
@@ -110,6 +129,8 @@ export interface WorkRequest {
   estimateReviewed: boolean;
 }
 export interface Registration {
+  reviewSummarySnapshot?: string;
+  similarCasesSnapshot?: { title: string; reason: string; difference: string }[];
   id: string;
   key: string;
   registeredAt: string;
@@ -119,6 +140,7 @@ export const basisOf = (r: WorkRequest): Basis => ({
   requestId: r.id,
   revision: r.revision,
   legacyVersion: r.legacyVersion,
+  screenType: r.screenType,
   requirementDocumentId: r.selectedRequirementDocumentId,
   confirmationId: r.activeConfirmationId,
 });
@@ -127,6 +149,7 @@ export const sameBasis = (a?: Basis, b?: Basis) =>
   !!b &&
   a.requestId === b.requestId &&
   a.legacyVersion === b.legacyVersion &&
+  a.screenType === b.screenType &&
   a.requirementDocumentId === b.requirementDocumentId &&
   (a.confirmationId || b.confirmationId
     ? a.confirmationId === b.confirmationId
@@ -156,8 +179,6 @@ export const readyForReview = (r: WorkRequest) =>
 export const canRegister = (r: WorkRequest) =>
   readyForReview(r) &&
   isCurrent(r, r.report) &&
-  r.scopeReviewed &&
-  r.estimateReviewed &&
   !!r.analysis?.id &&
   !!r.report?.id &&
   r.report.analysisId === r.analysis.id;
@@ -204,7 +225,7 @@ export function editRequest(
   patch: Partial<WorkRequest>,
 ): WorkRequest {
   if (patch.dueDate !== undefined && !validDueDate(patch.dueDate)) throw new Error("희망 완료일은 4자리 연도의 유효한 날짜로 입력해주세요.");
-  const inputChanged = ["title", "text", "html", "attachments", "dueDate"].some(
+  const inputChanged = ["title", "text", "html", "attachments", "dueDate", "screenType"].some(
     (k) => k in patch,
   );
   const next = {
@@ -294,12 +315,16 @@ export function restoreSelection(
 export function snapshotOf(r: WorkRequest): InputSnapshot {
   return {
     requestId: r.id,
+    legacyReferenceId: r.legacyVersion,
     inputRevision: r.inputRevision,
     title: r.title,
+    screenType: r.screenType,
+    desiredDueDate: r.dueDate || null,
     text: r.text,
     html: r.html,
     attachmentIds: r.attachments.map((a) => a.serverFileId!),
     attachmentNames: r.attachments.map((a) => a.name),
+    attachments: structuredClone(r.attachments),
   };
 }
 export function mergeGeneration(
@@ -332,6 +357,7 @@ export function statusOf(r: WorkRequest) {
           : "작성 중";
 }
 export interface MockArtifact {
+  screenType?: "new" | "modify";
   id: string;
   requirementDocumentId: string;
   legacyVersion: string;
@@ -345,6 +371,7 @@ export interface MockArtifact {
   unconnectedFeatures: string[];
 }
 export interface MockJob {
+  screenType?: "new" | "modify";
   transport?: "server";
   requestId?: string;
   id: string;

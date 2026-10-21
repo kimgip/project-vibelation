@@ -427,3 +427,21 @@ test("analysis payload contains exactly the confirmed MD file", async () => {
   );
   assert.equal(activeConfirmation(r).mockSnapshot, null);
 });
+
+test("registration no longer requires review checkboxes, but still rejects stale lineage", () => {
+  storage.clear();
+  const r = { ...prepared(), scopeReviewed: false, estimateReviewed: false };
+  assert.equal(canRegister(r), true);
+  const registration = repository.register(r);
+  assert.equal(registration.request.scopeReviewed, false);
+  assert.ok(registration.reviewSummarySnapshot);
+  assert.ok(registration.similarCasesSnapshot);
+  assert.equal(canRegister({ ...r, report: { ...r.report, analysisId: "other-analysis" } }), false);
+});
+test("screen type changes require explicit reselection and invalidate prior results", () => {
+  const r = prepared();
+  const edited = editRequest(r, { screenType: "modify" });
+  assert.equal(edited.inputRevision, r.inputRevision + 1);
+  assert.equal(hasAppliedRequirement(edited), false);
+  assert.equal(canRegister(edited), false);
+});

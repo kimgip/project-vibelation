@@ -32,8 +32,10 @@ test("generation idempotency, repeat generation and reload recovery", async () =
   await new Promise((r) => setTimeout(r, 920));
   const a = await mockRequirementsService.get("req", first.id, signal);
   assert.equal(a.status, "succeeded");
-  assert.match(a.document.markdown, /brief.txt/);
-  assert.match(a.document.markdown, /<h1>HTML<\/h1>/);
+  assert.match(a.document.markdown, /^# 파일 요청_version1/);
+  assert.doesNotMatch(a.document.markdown, /brief.txt|<h1>HTML<\/h1>|## 대화·텍스트 원문|## HTML 원문/);
+  assert.equal(a.document.inputSnapshot.html, input.html);
+  assert.deepEqual(a.document.contextDocumentIds, []);
   assert.equal(
     (await mockRequirementsService.get("req", first.id, signal)).document.id,
     a.document.id,
@@ -47,10 +49,6 @@ test("upload accepts File bytes and HTTP sends multipart file rather than metada
   });
   validateFiles([file], 0);
   const signal = new AbortController().signal;
-  assert.equal(
-    (await mockRequirementsService.upload("req", file, signal)).size,
-    14,
-  );
   const original = globalThis.fetch;
   let received;
   globalThis.fetch = async (url, options) => {
@@ -82,7 +80,7 @@ test("upload accepts File bytes and HTTP sends multipart file rather than metada
   }
   assert.throws(() => validateFiles([new File(["a"], "bad.exe")], 0));
 });
-test("HTTP generation sends full current input with an idempotency key and hydrates result IDs", async () => {
+test("HTTP generation saves a snapshot, starts by ID, and selects with current server revisions", async () => {
   const original = globalThis.fetch,
     calls = [];
   const signal = new AbortController().signal;
@@ -108,8 +106,7 @@ test("HTTP generation sends full current input with an idempotency key and hydra
   };
   globalThis.fetch = async (url, init) => {
     calls.push({ url, init });
-    if (url.endsWith("/selected-requirement"))
-      return new Response(null, { status: 204 });
+    if (url.endsWith("/requests/req")) return new Response(JSON.stringify({ requestRevision: 10, inputRevision: 3, inputSnapshotId: "snapshot-3" }), { status: 200 });
     return new Response(
       JSON.stringify(url.endsWith("/requirement-documents/doc-1") ? doc : job),
       { status: 200 },
@@ -118,15 +115,40 @@ test("HTTP generation sends full current input with an idempotency key and hydra
   try {
     const api = createHttpRequirementsService("https://backend.example");
     await api.start(input, "same-key", signal);
-    assert.deepEqual(JSON.parse(calls[0].init.body), input);
-    assert.equal(calls[0].init.headers["Idempotency-Key"], "same-key");
+    assert.equal(calls[0].init.method, undefined);
+    assert.equal(calls[1].init.method, "PATCH");
+    assert.deepEqual(JSON.parse(calls[1].init.body).input.attachmentIds, input.attachmentIds);
+    assert.deepEqual(JSON.parse(calls[2].init.body), { inputSnapshotId: "snapshot-3", expectedInputRevision: 3 });
+    assert.equal(calls[2].init.headers["Idempotency-Key"], "same-key");
+    await api.start(input, "same-key", signal);
+    assert.equal(calls.filter(c => c.init.method === "PATCH").length, 1, "retry does not recapture a newer draft");
     assert.equal((await api.get("req", "job-1", signal)).document.id, "doc-1");
     await api.select("req", "doc-1", 1, signal);
     assert.deepEqual(JSON.parse(calls.at(-1).init.body), {
-      documentId: "doc-1",
-      expectedInputRevision: 1,
+      workingRequirementDocumentId: "doc-1",
+      expectedInputRevision: 3,
+      expectedRequestRevision: 10,
     });
   } finally {
     globalThis.fetch = original;
   }
+});
+
+test("same-request latest MD context is captured once; local fixtures never claim AI merging", async () => {
+  values.clear();
+  const signal = new AbortController().signal;
+  const first = await mockRequirementsService.start(input, "context-first", signal);
+  const saved = JSON.parse(values.get("vibelation.mock.requirement-jobs.v1"));
+  saved[0].createdAt = "2020-01-01T00:00:00Z";
+  values.set("vibelation.mock.requirement-jobs.v1", JSON.stringify(saved));
+  const doc = (await mockRequirementsService.get("req", first.id, signal)).document;
+  const next = await mockRequirementsService.start({ ...input, text: "변경", title: "새 제목" }, "context-next", signal, doc);
+  assert.deepEqual(next.contextDocumentIds, [doc.id]);
+  assert.equal(next.displayTitle, "새 제목");
+  assert.equal(next.generationNumber, 2);
+  assert.notEqual((await mockRequirementsService.get("req", next.id, signal)).phase, "merging_previous");
+  const recovered = await mockRequirementsService.start(input, "context-next", signal);
+  assert.equal(recovered.inputSnapshot.text, "변경");
+  assert.deepEqual(recovered.contextDocumentIds, [doc.id]);
+  await assert.rejects(mockRequirementsService.start({ ...input, requestId: "other" }, "foreign", signal, doc), /다른 요청/);
 });

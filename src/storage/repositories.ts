@@ -1,3 +1,5 @@
+import { reviewSummary } from "../domain/reviewSummary";
+import { cases } from "../mocks/download-center";
 import {
   blankRequest,
   canRegister,
@@ -392,18 +394,20 @@ export const repository = {
       };
     });
   },
-  register(r: WorkRequest): Registration {
+  register(r: WorkRequest, serverId?: string): Registration {
     if (!canRegister(r))
-      throw new Error("최신 버전 산출물과 두 가지 검토 확인이 필요합니다.");
+      throw new Error("현재 확정과 일치하는 분석·리포트가 필요합니다.");
     const items = this.history();
     const key = `${r.id}:${r.activeConfirmationId}:${r.legacyVersion}:${r.analysis!.id}:${r.report!.id}`;
     const existing = items.find((x) => x.key === key);
     if (existing) return existing;
     const result = {
-      id: crypto.randomUUID(),
+      id: serverId || crypto.randomUUID(),
       key,
       registeredAt: new Date().toISOString(),
       request: structuredClone(r),
+      reviewSummarySnapshot: reviewSummary(r),
+      similarCasesSnapshot: structuredClone(r.analysis?.source === "server" ? r.analysis.similarCases || [] : cases),
     };
     localStorage.setItem(
       HISTORY_KEY,
