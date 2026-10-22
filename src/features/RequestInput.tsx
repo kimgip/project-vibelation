@@ -150,7 +150,7 @@ export function InputPage(props: WorkspaceProps) {
       <>
         <ScreenTitle
           title="[미리 붓기]"
-          description="예상 화면을 확인해 주세요."
+          description="기존 시스템에 적용될 화면을 예상해요."
         />
         <RequestContext r={r} edit={edit} />
         <SystemMockPanel r={r} />
@@ -249,7 +249,7 @@ export function InputPage(props: WorkspaceProps) {
     <>
       <ScreenTitle
         title="[쇳물 성분 보기]"
-        description="정리된 요구사항을 확인하고, 레거시에 맞춘 Mock을 만들어요."
+        description="정리된 요구사항을 확인해요. md는 새로 생성/수정할 수 있어요."
       />
       <RequestContext r={r} edit={edit} />
       {view === "preview" && (

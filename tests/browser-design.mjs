@@ -14,7 +14,7 @@ try {
   const errors = []; page.on("pageerror", e => errors.push(e.message));
   await page.goto(base);
   await page.getByRole("button", { name: /시작하기/ }).click();
-  await page.getByRole("button", { name: "신규 레거시 스타일로 새 화면" }).click();
+  await page.getByRole("button", { name: "새 화면" }).click();
   await page.getByLabel("요청 제목", { exact: true }).fill("협의 UI 검토");
   await page.getByRole("button", { name: "쇳물 녹이기 ›", exact: true }).click();
   await page.getByRole("button", { name: "샘플 불러오기" }).click();

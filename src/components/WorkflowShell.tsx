@@ -248,7 +248,7 @@ export function RequestContext({
       <summary>
         <span>{requestTitle(r)}</span>
         <span className="context-version">
-          선택한 레거시 기준
+          {/* 선택한 레거시 기준 */}
         </span>
         <span>요청 정보 수정</span>
       </summary>

@@ -10,7 +10,7 @@ import {
 import type { WorkspaceProps } from "./workspace";
 
 const screenTypes = [
-  ["new", "신규", "레거시 스타일로 새 화면"],
+  ["new", "신규", "새 화면"],
   ["modify", "수정", "기존 화면에 추가"],
 ] as const;
 function LegacyCheck({ checked }: { checked: boolean }) {
@@ -57,7 +57,7 @@ export function LegacyPicker({ r, edit, go, saved }: WorkspaceProps) {
         description="수정해야 할 나의 자원을 선택해 주세요."
       />
       <div className="legacy-picker-heading">
-        <h2>① 레거시 자원</h2>
+        <h2>① 시스템 선택</h2>
         <Link to="/settings/legacy">+ 기존 코드 ZIP 등록</Link>
       </div>
       {error && (
@@ -65,7 +65,7 @@ export function LegacyPicker({ r, edit, go, saved }: WorkspaceProps) {
           {error}
         </p>
       )}
-      {!references.length && !error && <p>등록된 레거시 자원이 없습니다. 기존 코드 ZIP을 등록해주세요.</p>}
+      {!references.length && !error && <p>등록된 시스템이 없습니다. 기존 코드 ZIP을 등록해주세요.</p>}
       <div className="legacy-reference-list">
         {references
           .slice()

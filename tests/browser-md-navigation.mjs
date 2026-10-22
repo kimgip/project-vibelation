@@ -16,7 +16,7 @@ try {
   assert.equal(await page.getByRole("button", { name: "쇳물 녹이기 ›", exact: true }).isDisabled(), true);
   await page.getByText("신규 또는 수정을 선택해주세요", { exact: true }).waitFor();
   assert.equal(await page.getByRole("link", { name: /쇳물 녹이기/ }).count(), 0, "progress cannot bypass missing screen type");
-  await page.getByRole("button", { name: "신규 레거시 스타일로 새 화면" }).click();
+  await page.getByRole("button", { name: "새 화면" }).click();
   assert.equal(await page.getByRole("button", { name: "쇳물 녹이기 ›", exact: true }).isEnabled(), true);
   // Restore an older persisted request with a selected MD but no screenType.
   await page.evaluate(async base => {

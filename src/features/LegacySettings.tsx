@@ -121,7 +121,7 @@ export function LegacySettings() {
     <>
       <ScreenTitle
         title="⚙ 설정"
-        description="기존 코드 ZIP을 보관하고, Mock 생성·레거시 분석에 사용할 틀을 관리합니다."
+        description="기존 코드 ZIP을 보관하고, Mock 생성·시스템 분석에 사용할 틀을 관리합니다."
       />
       {error && (
         <div className="inline-error" role="alert">
@@ -137,9 +137,9 @@ export function LegacySettings() {
         </p>
       )}
       <label className="legacy-system-picker">
-        등록된 레거시 틀
+        등록된 시스템
         <select
-          aria-label="등록된 레거시 틀"
+          aria-label="등록된 시스템"
           value={draft.revision ? draft.id : ""}
           disabled={busy || !loaded}
           onChange={(e) => select(e.target.value)}
@@ -155,7 +155,7 @@ export function LegacySettings() {
       </label>
       <section className="workflow-card legacy-editor">
         <div className="workflow-card-heading">
-          <h2>{draft.revision ? "레거시 틀 수정" : "새 틀 등록"}</h2>
+          <h2>{draft.revision ? "틀 수정" : "새 틀 등록"}</h2>
           <button disabled={busy || !loaded} onClick={() => select("")}>
             새 틀
           </button>

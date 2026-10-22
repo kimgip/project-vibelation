@@ -135,7 +135,7 @@ try {
     .waitFor();
   await page.reload();
   await page
-    .getByLabel("등록된 레거시 틀", { exact: true })
+    .getByLabel("등록된 시스템 틀", { exact: true })
     .selectOption({ label: "코드 ZIP 테스트 · 적용됨" });
   assert.equal(await page.getByText("front.zip", { exact: true }).count(), 1);
   const original = await page.evaluate(async (baseUrl) => {

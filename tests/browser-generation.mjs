@@ -149,7 +149,7 @@ try {
     .getByRole("button", { name: "이 문서로 협의하기", exact: true })
     .click();
   await page
-    .getByRole("button", { name: "레거시에 맞춰 Mock 만들기 >", exact: true })
+    .getByRole("button", { name: "선택한 시스템에 맞춰 Mock 만들기 >", exact: true })
     .click();
   await page
     .getByRole("button", { name: "시스템 적용 Mock 생성", exact: true })
@@ -168,7 +168,7 @@ try {
     })
     .click();
   await page.getByText("서버 요청에 실패했습니다 (503).",{exact:false}).waitFor();
-  await page.getByRole("button",{name:"레거시 분석",exact:true}).click();
+  await page.getByRole("button",{name:"시스템 분석",exact:true}).click();
   await page.getByRole("button", { name: /서버 자원/ }).waitFor();
   assert.equal(requests.length, 2);
   assert.ok(requests[0].path.endsWith("system-mock-generations"));
