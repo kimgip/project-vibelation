@@ -39,7 +39,6 @@ function GraphView({graph}:{graph:Graph}) {
       {!!node.access?.length&&<><h3>접근 권한</h3><table>{node.access.map(a=><tbody key={a.label}><tr><th>{a.label}</th><td><b>{a.value}</b><p>{a.note}</p></td></tr></tbody>)}</table></>}
       <h3>변경 내용</h3><ul>{(node.changes?.length?node.changes:node.actionReason.split('\n')).map((text,i)=><li key={i}>{text}</li>)}</ul>
       {node.relatedTo?.length?<><h3>관련 자원</h3>{chips(node.relatedTo)}</>:<><h3>호출하는 쪽 (상류)</h3>{chips(graph.edges.filter(e=>e.targetId===node.id).map(e=>e.sourceId))}<h3>호출되는 쪽 (하류)</h3>{chips(graph.edges.filter(e=>e.sourceId===node.id).map(e=>e.targetId))}</>}
-      <h3>코드 근거</h3>{node.evidenceIds.length?node.evidenceIds.map(id=>{const ev=graph.evidence.find(e=>e.id===id)!;return <div key={id}><code>{ev.path}{ev.lineStart?`:${ev.lineStart}`:''}</code>{ev.snippet&&<pre>{ev.snippet}</pre>}</div>}):<p>등록된 코드 근거가 없습니다.</p>}
     </aside>}
   </section>;
 }
