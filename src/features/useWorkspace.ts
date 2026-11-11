@@ -1,5 +1,7 @@
-import { backendApi, apiBase } from "../services/backendApi";
-import { createServerRequest, serverRequests, confirmServerRequest, serverReport, registerServerRequest, syncRequest, serverState } from "../services/serverWorkspace";
+import { serverDraftKey, serverDrafts, saveServerDraft, dirtyKey, syncRequest, createServerRequest, serverRequests, confirmServerRequest, registerServerRequest } from "../services/serverWorkspace";
+import { snapshotOf } from "../domain/types";
+import { analyzeSimilarCases } from "../services/similarCases";
+import { apiBase, serverMode } from "../services/api";
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
@@ -8,24 +10,23 @@ import {
   basisOf,
   sameBasis,
   confirmRequirement,
+  isCurrent,
   type WorkRequest,
   type Registration,
 } from "../domain/types";
 import { repository, REQUEST_KEY, HISTORY_KEY } from "../storage/repositories";
 import {
-  mockService,
   analysisInput,
   analyzeRequirements,
 } from "../services/contract";
 import { sourcesForVersion } from "../storage/legacySources";
 import type { WorkspaceProps } from "./workspace";
 import type { Material } from "./Landing";
-const dirtyKey=(id:string)=>`soetmul.server-dirty:${apiBase}:${id}`;
 function load() {
   try {
     return {
-      requests: repository.requests(),
-      history: backendApi ? [] : repository.history(),
+      requests: serverMode ? serverDrafts() : repository.requests(),
+      history: serverMode ? [] : repository.history(),
       error: "",
     };
   } catch (e) {
@@ -44,12 +45,14 @@ export function useWorkspace() {
     [storageBlocked, setStorageBlocked] = useState(!!initial.error),
     [saved, setSaved] = useState(true),
     [busy, setBusy] = useState("");
-  const [serverLoaded,setServerLoaded]=useState(!backendApi);
+  const [serverLoaded, setServerLoaded] = useState(!serverMode);
   const location = useLocation(),
     navigate = useNavigate();
   const parts = location.pathname.split("/");
-  const isHistory = parts[1] === "history",
-    isTeam = parts[1] === "team";
+  const isHistory = parts[1] === "history";
+  useEffect(() => {
+    if (location.pathname === "/team") navigate("/requests", { replace: true });
+  }, [location.pathname, navigate]);
   const id = parts[2];
   const r = requests.find((x) => x.id === id);
   const step = ["mock", "agreement"].includes(parts[3])
@@ -65,7 +68,7 @@ export function useWorkspace() {
   storageBlockedRef.current = storageBlocked;
   useEffect(() => {
     const handler = (e: StorageEvent) => {
-      if (e.key === REQUEST_KEY || e.key === HISTORY_KEY) {
+      if (serverMode ? e.key === serverDraftKey : e.key === REQUEST_KEY || e.key === HISTORY_KEY) {
         storageBlockedRef.current = true;
         active.current?.controller.abort();
         active.current = null;
@@ -94,12 +97,14 @@ export function useWorkspace() {
     active.current?.controller.abort();
     active.current = null;
     setBusy("");
+    if (serverMode) setSaved(!localStorage.getItem(dirtyKey(id)));
     return () => {
       active.current?.controller.abort();
       active.current = null;
     };
   }, [id]);
   const commit = (next: WorkRequest) => {
+    const previous = requestsRef.current.find(x => x.id === next.id);
     const items = [
       next,
       ...requestsRef.current.filter((x) => x.id !== next.id),
@@ -111,8 +116,11 @@ export function useWorkspace() {
       return false;
     }
     try {
-      repository.saveRequest(next);
-      setSaved(backendApi ? !localStorage.getItem(dirtyKey(next.id)) : true);
+      if (serverMode) {
+        if (previous && JSON.stringify(snapshotOf(previous)) !== JSON.stringify(snapshotOf(next))) localStorage.setItem(dirtyKey(next.id), "1");
+        saveServerDraft(next);
+      } else repository.saveRequest(next);
+      setSaved(!serverMode || !localStorage.getItem(dirtyKey(next.id)));
       return true;
     } catch (e) {
       setSaved(false);
@@ -129,7 +137,6 @@ export function useWorkspace() {
     active.current?.controller.abort();
     active.current = null;
     setBusy("");
-    if(backendApi)localStorage.setItem(dirtyKey(r.id),"1");
     return commit(editRequest(r, patch));
   };
   const create = async (materials: Material[] = []) => {
@@ -142,31 +149,28 @@ export function useWorkspace() {
       !window.confirm("미저장 변경사항이 있습니다. 새 요청으로 이동할까요?")
     )
       return;
-    if(active.current) return;
-    const controller=new AbortController(),token=++serial.current;
-    active.current={id:token,controller};setBusy("create");
+    if (active.current || (serverMode && !serverLoaded)) return;
+    const controller = new AbortController(), token = ++serial.current;
+    active.current = { id: token, controller }; setBusy("create");
     try {
-    const next = backendApi ? await createServerRequest(controller.signal) : blankRequest();
-    commit(next);
-    navigate(`/requests/${next.id}/input?view=legacy`, {
-      state: {
-        materials: materials.length ? materials : ["text"],
-        initialMaterial: materials[0] || "text",
-      },
-    });
-    } catch(e) {setMessage(e instanceof Error ? e.message : "요청 생성 실패");}
-    finally {if(active.current?.id===token){active.current=null;setBusy("");}}
+      const next = serverMode ? await createServerRequest(controller.signal) : blankRequest();
+      if (controller.signal.aborted || active.current?.id !== token || !commit(next)) return;
+      navigate(`/requests/${next.id}/input?view=legacy`, { state: {
+        materials: materials.length ? materials : ["text"], initialMaterial: materials[0] || "text",
+      } });
+    } catch (e) { if (!controller.signal.aborted) setMessage(e instanceof Error ? e.message : "요청 생성 실패"); }
+    finally { if (active.current?.id === token) { active.current = null; setBusy(""); } }
   };
   useEffect(() => {
     if (location.pathname !== "/requests/new") {
       creatingFromRoute.current = false;
       return;
     }
-    if (!creatingFromRoute.current) {
+    if ((!serverMode || serverLoaded) && !creatingFromRoute.current) {
       creatingFromRoute.current = true;
       create();
     }
-  }, [location.pathname]);
+  }, [location.pathname, serverLoaded]);
   useEffect(() => {
     if (r && ["agreement", "mock"].includes(parts[3]))
       navigate(
@@ -189,10 +193,14 @@ export function useWorkspace() {
   }, [location.pathname, location.state]);
   const go = (target: string) =>
     r && navigate(`/requests/${r.id}/${target}`, { state: location.state });
-  async function run(kind: "analysis" | "report", confirmed?: WorkRequest) {
+  async function run(kind: "analysis" | "similarCaseAnalysis", confirmed?: WorkRequest) {
     if (!r || active.current || !saved || storageBlocked) return;
     const latest = confirmed || requestsRef.current.find((x) => x.id === r.id);
     if (!latest) return;
+    if (kind === "similarCaseAnalysis" && isCurrent(latest, latest.similarCaseAnalysis) && latest.similarCaseAnalysis?.analysisId === latest.analysis?.id) {
+      navigate(`/requests/${latest.id}/review`);
+      return;
+    }
     const snapshot = structuredClone(latest),
       controller = new AbortController(),
       token = ++serial.current;
@@ -208,23 +216,22 @@ export function useWorkspace() {
               ),
               controller.signal,
             )
-          : backendApi ? await serverReport(snapshot, controller.signal) : await mockService[kind](snapshot, controller.signal);
+          : await analyzeSimilarCases(snapshot, controller.signal);
       const current = requestsRef.current.find((x) => x.id === snapshot.id);
       if (
         active.current?.id !== token ||
         !current ||
-        current.revision !== snapshot.revision ||
         !sameBasis(basisOf(current), result.basis)
       )
         return;
       commit({
         ...current,
         [kind]: result,
-        ...(kind === "report" || kind === "analysis"
+        ...(kind === "similarCaseAnalysis" || kind === "analysis"
           ? { scopeReviewed: false, estimateReviewed: false }
           : {}),
       });
-      if (kind === "report") navigate(`/requests/${snapshot.id}/review`);
+      if (kind === "similarCaseAnalysis") navigate(`/requests/${snapshot.id}/review`);
     } catch (e) {
       if (!(e instanceof DOMException && e.name === "AbortError"))
         setMessage(
@@ -241,11 +248,10 @@ export function useWorkspace() {
   }
   const register = async () => {
     if (!r || busy || !saved || storageBlocked) return;
-    setBusy("register");
     try {
-      if(backendApi) await syncRequest(r,new AbortController().signal);
-      const result = backendApi ? await registerServerRequest(r,new AbortController().signal) : repository.register(r);
-      setHistory(backendApi ? [result,...history.filter(x=>x.id!==result.id)] : repository.history());
+      setBusy("register");
+      const result = serverMode ? await registerServerRequest(r, new AbortController().signal) : repository.register(r);
+      setHistory(serverMode ? [result, ...history.filter(x => x.id !== result.id)] : repository.history());
       navigate(`/history/${result.id}`);
     } catch (e) {
       setMessage(
@@ -253,26 +259,29 @@ export function useWorkspace() {
           ? e.message
           : "등록에 실패했습니다. 입력을 보존했습니다.",
       );
-    }
-    finally {setBusy("");}
-  };
-  const retrySave=async()=>{
-    if(!r)return;
-    if(!backendApi){commit(r);return;}
-    try{await syncRequest(r,new AbortController().signal);localStorage.removeItem(dirtyKey(r.id));setSaved(true);setMessage("서버 입력을 저장했습니다.");}
-    catch(e){setSaved(false);setMessage(e instanceof Error?e.message:"서버 저장 실패");}
+    } finally { setBusy(""); }
   };
   const reload = async () => {
-    if(backendApi && !saved && !window.confirm("미저장 입력을 서버에 저장된 내용으로 바꿀까요? 필요하면 먼저 복구용 내보내기를 해주세요."))return;
-    if(backendApi){
-      try {const rows=await serverRequests(new AbortController().signal);requestsRef.current=rows;setRequests(rows);rows.forEach(row=>localStorage.removeItem(dirtyKey(row.id)));setStorageBlocked(false);setSaved(true);setServerLoaded(true);setMessage("서버 요청을 다시 불러왔습니다.");}
-      catch(e){setMessage(e instanceof Error ? e.message : "서버 조회 실패");}return;
-    }
     if (
       !saved &&
       !window.confirm("메모리의 변경사항 대신 저장 자료를 다시 불러올까요?")
     )
       return;
+    if (serverMode) {
+      try {
+        const rows = await serverRequests(new AbortController().signal);
+        rows.forEach(row => {
+          localStorage.removeItem(dirtyKey(row.id));
+          // Re-read server revisions before subsequent writes after an explicit reload.
+          localStorage.removeItem(`soetmul.server-request:${apiBase}:${row.id}`);
+        });
+        localStorage.setItem(serverDraftKey, JSON.stringify(rows));
+        requestsRef.current = rows; setRequests(rows); setHistory([]);
+        storageBlockedRef.current = false; setStorageBlocked(false); setSaved(true); setServerLoaded(true);
+        setMessage("서버 저장 자료를 다시 불러왔습니다.");
+      } catch (e) { setMessage(e instanceof Error ? e.message : "서버 요청 조회 실패"); }
+      return;
+    }
     const data = load();
     if (data.error) {
       setMessage(data.error);
@@ -291,6 +300,7 @@ export function useWorkspace() {
         [
           REQUEST_KEY,
           HISTORY_KEY,
+          serverDraftKey,
           "vibelation.requests.v2",
           "vibelation.history.v2",
           "vibelation.request.v1",
@@ -309,60 +319,72 @@ export function useWorkspace() {
   };
   const confirmAndAnalyze = async (options: { skipPreview?: boolean } = {}) => {
     if (!r || !saved || storageBlocked || active.current) return;
+    const controller = new AbortController();
+    const token = ++serial.current;
+    active.current = { id: token, controller };
     try {
       const latest = requestsRef.current.find((x) => x.id === r.id)!;
-      setBusy("confirm");
-      const result = backendApi ? await confirmServerRequest(latest,new AbortController().signal) : confirmRequirement(latest);
-      const confirmed=options.skipPreview ? {...result,previewSkipped:true} : result;
-      const current=requestsRef.current.find(x=>x.id===latest.id);
-      if(!current || current.revision!==latest.revision)throw new Error("확정 중 입력이 변경되었습니다. 다시 확인해주세요.");
+      const capturedRevision = latest.revision;
+      const result = serverMode ? await confirmServerRequest(latest, controller.signal) : confirmRequirement(latest);
+      const confirmed = options.skipPreview ? { ...result, previewSkipped: true } : result;
+      if (controller.signal.aborted || active.current?.id !== token || requestsRef.current.find(x => x.id === r.id)?.revision !== capturedRevision) return;
+      active.current = null;
       if (!commit(confirmed)) return;
+      setBusy("");
       navigate(`/requests/${r.id}/analysis`, { state: location.state });
       void run("analysis", confirmed);
     } catch (error) {
+      if (controller.signal.aborted) return;
       setMessage(
         error instanceof Error
           ? error.message
           : "요구사항 확정에 실패했습니다.",
       );
+      setBusy("");
+    } finally {
+      if (active.current?.id === token) { active.current = null; setBusy(""); }
     }
-    finally {setBusy(current=>current==="confirm"?"":current);}
   };
-  useEffect(()=>{
-    if(!backendApi) return;
-    const controller=new AbortController();
-    const revisions=new Map(requestsRef.current.map(item=>{try{return [item.id,serverState(item.id).row.requestRevision] as const;}catch{return [item.id,undefined] as const;}}));
-    void serverRequests(controller.signal).then(rows=>{
-      if(controller.signal.aborted)return;
-      let conflict=false;
-      const merged=rows.map(row=>{
-        const local=requestsRef.current.find(x=>x.id===row.id);
-        if(local && localStorage.getItem(dirtyKey(row.id))){
-          if(revisions.get(row.id)!==serverState(row.id).row.requestRevision)conflict=true;
-          return local;
+  useEffect(() => {
+    if (!serverMode) return;
+    const controller = new AbortController();
+    const revisions = new Map(requestsRef.current.map(row => [row.id, row.revision]));
+    void serverRequests(controller.signal).then(rows => {
+      if (controller.signal.aborted) return;
+      const local = requestsRef.current;
+      const merged = rows.map(row => {
+        const draft = local.find(x => x.id === row.id);
+        return draft && (localStorage.getItem(dirtyKey(row.id)) || draft.revision !== revisions.get(row.id)) ? draft : row;
+      });
+      for (const draft of local) if (!merged.some(x => x.id === draft.id) && localStorage.getItem(dirtyKey(draft.id))) merged.push(draft);
+      localStorage.setItem(serverDraftKey, JSON.stringify(merged));
+      requestsRef.current = merged; setRequests(merged); setServerLoaded(true);
+    }).catch(e => { if (!controller.signal.aborted) { setSaved(false); setMessage(e instanceof Error ? e.message : "서버 요청 조회 실패"); } });
+    return () => controller.abort();
+  }, []);
+  useEffect(() => {
+    if (!serverMode || !serverLoaded || !r || storageBlocked || !localStorage.getItem(dirtyKey(r.id)) || r.attachments.some(a => a.uploadStatus !== "uploaded")) return;
+    const controller = new AbortController(), captured = r;
+    const timer = setTimeout(() => {
+      void syncRequest(captured, controller.signal).then(() => {
+        if (!controller.signal.aborted && requestsRef.current.find(x => x.id === captured.id)?.revision === captured.revision) {
+          localStorage.removeItem(dirtyKey(captured.id)); setSaved(true);
         }
-        return row;
-      });
-      requestsRef.current=merged;setRequests(merged);setServerLoaded(true);
-      if(conflict){storageBlockedRef.current=true;setStorageBlocked(true);setSaved(false);setMessage("서버 변경과 이 브라우저의 미저장 입력이 충돌합니다. 입력을 백업하고 서버 자료를 다시 불러와주세요.");}
-    }).catch(e=>{if(!controller.signal.aborted)setMessage(e instanceof Error?e.message:"서버 요청 조회 실패");});
-    return ()=>controller.abort();
-  },[]);
-  useEffect(()=>{
-    if(!backendApi || !serverLoaded || !r || storageBlocked || !localStorage.getItem(dirtyKey(r.id)) || r.attachments.some(a=>a.uploadStatus!=="uploaded"))return;
-    const snapshot=structuredClone(r);
-    setSaved(false);
-    const timer=setTimeout(()=>{
-      // syncRequest serializes revision-sensitive writes with generation and confirmation.
-      void syncRequest(snapshot,new AbortController().signal).then(()=>{
-        const current=requestsRef.current.find(x=>x.id===snapshot.id);
-        if(current?.inputRevision===snapshot.inputRevision && current.legacyVersion===snapshot.legacyVersion){localStorage.removeItem(dirtyKey(snapshot.id));setSaved(true);}
-      }).catch(e=>{
-        setMessage(e instanceof Error?e.message:"서버 입력 저장 실패");
-      });
-    },600);
-    return ()=>clearTimeout(timer);
-  },[r?.id,r?.inputRevision,r?.legacyVersion,r?.attachments,storageBlocked,serverLoaded]);
+      }).catch(e => { if (!controller.signal.aborted) { setSaved(false); setMessage(e instanceof Error ? e.message : "서버 입력 저장 실패"); } });
+    }, 400);
+    return () => { clearTimeout(timer); controller.abort(); };
+  }, [r, serverLoaded, storageBlocked]);
+  const retrySave = async () => {
+    if (!r) return;
+    if (!serverMode) { commit(r); return; }
+    const captured = r;
+    try {
+      await syncRequest(captured, new AbortController().signal);
+      if (requestsRef.current.find(x => x.id === captured.id)?.revision === captured.revision) {
+        localStorage.removeItem(dirtyKey(captured.id)); setSaved(true); setMessage("서버 입력을 저장했습니다.");
+      }
+    } catch (e) { setMessage(e instanceof Error ? e.message : "서버 저장 재시도 실패"); }
+  };
   const props: WorkspaceProps | undefined = r
     ? {
         r,
@@ -380,7 +402,7 @@ export function useWorkspace() {
         busy,
         go,
         register,
-        saved: saved && !storageBlocked,
+        saved: saved && !storageBlocked && serverLoaded,
       }
     : undefined;
   return {
@@ -389,6 +411,8 @@ export function useWorkspace() {
     message,
     setMessage,
     storageBlocked,
+    serverLoaded,
+    retrySave,
     saved,
     busy,
     location,
@@ -397,11 +421,9 @@ export function useWorkspace() {
     id,
     step,
     isHistory,
-    isTeam,
     create,
     commit,
     reload,
-    retrySave,
     backup,
     props,
   };

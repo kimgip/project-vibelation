@@ -1,233 +1,187 @@
-import { backendApi, apiBase, operationKey, ApiError, type Wire } from "./backendApi";
-import { blankRequest, snapshotOf, draftFingerprint, basisOf, canRegister, type WorkRequest, type InputSnapshot, type RequirementDocument, type RequirementConfirmation, type Registration } from "../domain/types";
-import { waitForPoll } from "./generationTransport";
-const storageKey = (id: string) => `soetmul.server-request:${apiBase}:${id}`;
-export function serverState(id: string): Wire {
-    const raw = localStorage.getItem(storageKey(id));
-    if (!raw)
-        throw new Error("서버 요청을 먼저 불러와주세요. 로컬 요청은 서버 모드에서 자동 전송하지 않습니다.");
-    return JSON.parse(raw);
+import { apiBase, ApiError, jsonPost, operationKey } from "./api";
+import { backendApi, type Wire } from "./backendApi";
+import { blankRequest, snapshotOf, draftFingerprint, basisOf, sameBasis, confirmRequirement, canRegister,
+  type WorkRequest, type InputSnapshot, type RequirementDocument, type RequirementConfirmation, type Registration } from "../domain/types";
+import { validRequest } from "../storage/repositories";
+import { registrationFromServer } from "./history";
+import { similarCaseAnalysisFromServer } from "./similarCases";
+import { analysisFromServer } from "./contract";
+const scope = (base: string) => base.replace(/\/+$/, "").replace(/\/api$/, "");
+const stateKey = (id: string, base = apiBase) => `soetmul.server-request:${scope(base)}:${id}`;
+export const serverDraftKey = `soetmul.server-drafts:${apiBase}`;
+export const dirtyKey = (id: string) => `soetmul.server-dirty:${apiBase}:${id}`;
+export function serverDrafts(): WorkRequest[] {
+  const rows = JSON.parse(localStorage.getItem(serverDraftKey) || "[]");
+  if (!Array.isArray(rows) || !rows.every(validRequest)) throw new Error("서버 작업 캐시가 손상됐습니다. 복구용 자료를 내보낸 뒤 다시 불러와주세요.");
+  return rows;
 }
-export function rememberServerRequest(row: Wire, fingerprint?: string) {
-    localStorage.setItem(storageKey(row.id), JSON.stringify({ row, fingerprint }));
-    return row;
+export function saveServerDraft(r: WorkRequest) {
+  localStorage.setItem(serverDraftKey, JSON.stringify([r, ...serverDrafts().filter(x => x.id !== r.id)]));
 }
-export const inputPayload = (input: InputSnapshot, dueDate?: string) => ({ title: input.title, text: input.text, html: input.html, desiredDueDate: dueDate || null, attachmentIds: input.attachmentIds, ...(input.screenType ? {screenType:input.screenType} : {}) });
+export function serverState(id: string, base = apiBase): { row: Wire; fingerprint?: string } | undefined {
+  const value = localStorage.getItem(stateKey(id, base));
+  return value ? JSON.parse(value) : undefined;
+}
+export function rememberServerRequest(row: Wire, fingerprint?: string, base = apiBase) {
+  if (typeof row.id !== "string" || !Number.isInteger(row.requestRevision)) throw new Error("서버 요청 ID·revision 응답을 확인해주세요.");
+  localStorage.setItem(stateKey(row.id, base), JSON.stringify({ row, fingerprint }));
+  return row;
+}
+export const inputPayload = (input: InputSnapshot, dueDate = input.desiredDueDate) => ({
+  title: input.title, text: input.text, html: input.html, desiredDueDate: dueDate || null,
+  attachmentIds: input.attachmentIds, screenType: input.screenType,
+});
+const fingerprintOf = (input: InputSnapshot, dueDate?: string) => JSON.stringify({ legacyReferenceId: input.legacyReferenceId, input: inputPayload(input, dueDate) });
 const queues = new Map<string, Promise<unknown>>();
-export async function withServerLock<T>(id: string, operation: () => Promise<T>): Promise<T> {
-    const prior = queues.get(id) || Promise.resolve();
-    const next = prior.catch(() => { }).then(operation);
-    queues.set(id, next);
-    try {
-        return await next;
+export async function withServerLock<T>(id: string, operation: () => Promise<T>, base = apiBase): Promise<T> {
+  const key = stateKey(id, base), previous = queues.get(key) || Promise.resolve();
+  const next = previous.catch(() => {}).then(operation); queues.set(key, next);
+  try { return await next; } finally { if (queues.get(key) === next) queues.delete(key); }
+}
+export async function mutateRequest<T>(id: string, signal: AbortSignal, operation: (row: Wire) => Promise<T>, api = backendApi): Promise<T> {
+  return withServerLock(id, async () => {
+    signal.throwIfAborted();
+    const cached = serverState(id, api.base);
+    const row = cached?.row || await api.getRequest(id, signal);
+    const result = await operation(row);
+    if (result && typeof result === "object" && "requestRevision" in result) {
+      const updated = { ...row, ...result, id };
+      rememberServerRequest(updated, serverState(id, api.base)?.fingerprint ?? cached?.fingerprint, api.base);
     }
-    finally {
-        if (queues.get(id) === next)
-            queues.delete(id);
-    }
+    return result;
+  }, api.base);
 }
-export async function syncInput(input: InputSnapshot, signal: AbortSignal, dueDate?: string, api = backendApi!) {
-    return withServerLock(input.requestId, async () => {
-        signal.throwIfAborted();
-        const state = serverState(input.requestId), payload = inputPayload(input, dueDate ?? state.row.desiredDueDate);
-        const fingerprint = JSON.stringify(payload);
-        if (state.fingerprint === fingerprint)
-            return state.row;
-        const row = await api.patchRequest(input.requestId, { expectedRequestRevision: state.row.requestRevision, input: payload }, signal);
-        rememberServerRequest(row, fingerprint);
-        return row;
-    });
+export async function syncInput(input: InputSnapshot, signal: AbortSignal, dueDate?: string, api = backendApi) {
+  return mutateRequest<Wire>(input.requestId, signal, async row => {
+    const fingerprint = fingerprintOf(input, dueDate), cached = serverState(input.requestId, api.base);
+    if (cached?.fingerprint === fingerprint) return row;
+    const saved = await api.patchRequest(input.requestId, {
+      expectedRequestRevision: row.requestRevision, legacyReferenceId: input.legacyReferenceId, input: inputPayload(input, dueDate),
+    }, signal);
+    const updated: Wire = { ...row, ...saved, id: input.requestId };
+    rememberServerRequest(updated, fingerprint, api.base);
+    return updated;
+  }, api);
 }
-export async function syncRequest(r: WorkRequest, signal: AbortSignal) {
-    localStorage.setItem(`soetmul.screen-type:${apiBase}:${r.id}`,r.screenType || "");
-    localStorage.setItem(`soetmul.code-version:${apiBase}:${r.id}`, r.legacyVersion);
-    return syncInput(snapshotOf(r), signal, r.dueDate);
+export const syncRequest = (r: WorkRequest, signal: AbortSignal) => syncInput(snapshotOf(r), signal, r.dueDate);
+export function documentFromWire(row: Wire, requestId: string): RequirementDocument {
+  if (typeof row.id !== "string" || typeof row.markdown !== "string") throw new Error("요구사항 문서 응답 형식이 올바르지 않습니다.");
+  if (row.inputSnapshot && row.inputSnapshot.requestId !== requestId) throw new Error("다른 요청의 문서가 포함되어 있습니다.");
+  const inputSnapshot = row.inputSnapshot || { unavailable: true, requestId, inputRevision: row.inputRevision,
+    title: row.displayTitle || "", text: "", html: "", attachmentIds: [], attachmentNames: [] };
+  return { ...row, inputSnapshot, source: "server" } as RequirementDocument;
 }
-export function documentFromWire(row: Wire, requestId: string, snapshot?: InputSnapshot): RequirementDocument {
-    if (typeof row.id !== "string" || typeof row.markdown !== "string")
-        throw new Error("요구사항 문서 응답 형식이 올바르지 않습니다.");
-    const key = `soetmul.document-input:${apiBase}:${row.id}`;
-    const stored = localStorage.getItem(key);
-    const input = snapshot || row.inputSnapshot || (stored ? JSON.parse(stored) : {
-        unavailable: true, requestId, inputRevision: row.inputRevision, title: row.title || "", text: "", html: "", attachmentIds: [], attachmentNames: []
-    });
-    localStorage.setItem(key, JSON.stringify(input));
-    return { ...row, inputSnapshot: input, inputRevision: input.inputRevision, source: row.source || "server" } as RequirementDocument;
-}
-export function confirmationFromWire(row: Wire, r: WorkRequest): RequirementConfirmation {
-    const doc = documentFromWire(row.documentSnapshot, r.id, r.requirements.find(d => d.id === row.requirementDocumentId)?.inputSnapshot);
-    return { ...row, requestId: r.id, inputRevision: r.inputRevision, draftFingerprint: draftFingerprint({ ...r, selectedRequirementDocumentId: doc.id }), documentSnapshot: doc,
-        mockSnapshot: null, mockReviewed: null, agreementSnapshot: { scope: "", acceptanceCriteria: "", exclusions: "", unresolvedItems: "" } } as RequirementConfirmation;
-}
-export async function createServerRequest(signal: AbortSignal): Promise<WorkRequest> {
-    const refs = await backendApi!.listLegacyReferences(signal);
-    if (!refs.items?.length)
-        throw new Error("서버에 사용 가능한 레거시 코드 기준이 없습니다.");
-    const op = operationKey("create-request");
-    const row = await backendApi!.createRequest({ title: "", legacyReferenceId: refs.items[0].id }, op.key, signal);
-    op.done();
-    rememberServerRequest(row, JSON.stringify({ title: row.title, text: row.text, html: row.html, desiredDueDate: row.desiredDueDate, attachmentIds: row.attachmentIds, ...(row.screenType ? {screenType:row.screenType} : {}) }));
-    return requestFromWire(row);
+function confirmationFromWire(row: Wire, r: WorkRequest): RequirementConfirmation {
+  if ((row.requestId && row.requestId !== r.id) || typeof row.id !== "string") throw new Error("확정 응답의 요청 기준이 다릅니다.");
+  const documentSnapshot = documentFromWire(row.documentSnapshot, r.id);
+  if (row.requirementDocumentId && row.requirementDocumentId !== documentSnapshot.id) throw new Error("확정 문서 기준이 다릅니다.");
+  return { ...row, requestId: r.id, documentSnapshot,
+    draftFingerprint: draftFingerprint({ ...r, inputRevision: row.inputRevision, selectedRequirementDocumentId: documentSnapshot.id, requirements: [documentSnapshot] }),
+    mockSnapshot: null, mockReviewed: null, agreementSnapshot: { scope: "", acceptanceCriteria: "", exclusions: "", unresolvedItems: "" } } as RequirementConfirmation;
 }
 export function requestFromWire(row: Wire): WorkRequest {
-    const screenType=row.screenType || localStorage.getItem(`soetmul.screen-type:${apiBase}:${row.id}`) || undefined;
-    return { ...blankRequest(), screenType, createdAt:row.createdAt || row.updatedAt, id: row.id, title: row.title, text: row.text || "", html: row.html || "", dueDate: row.desiredDueDate || "", inputRevision: row.inputRevision,
-        revision: row.requestRevision, legacyVersion: localStorage.getItem(`soetmul.code-version:${apiBase}:${row.id}`) || row.legacyVersion, updatedAt: row.updatedAt,
-        selectedRequirementDocumentId: row.workingRequirementDocumentId || undefined, activeConfirmationId: row.activeConfirmationId || undefined };
+  if (typeof row.id !== "string" || !Number.isInteger(row.requestRevision) || !Number.isInteger(row.inputRevision)) throw new Error("서버 요청 응답 형식을 확인해주세요.");
+  return { ...blankRequest(), id: row.id, title: row.title || "", text: row.text || "", html: row.html || "",
+    dueDate: row.desiredDueDate || "", screenType: row.screenType, inputRevision: row.inputRevision, revision: row.requestRevision,
+    legacyVersion: row.legacyReferenceId || row.legacyVersion || "", createdAt: row.createdAt || row.updatedAt, updatedAt: row.updatedAt,
+    selectedRequirementDocumentId: row.workingRequirementDocumentId || undefined, activeConfirmationId: row.activeConfirmationId || undefined };
 }
-export async function restoreRequest(id: string, signal: AbortSignal): Promise<WorkRequest> {
-    const row = await backendApi!.getRequest(id, signal);
-    rememberServerRequest(row, JSON.stringify({ title: row.title, text: row.text, html: row.html, desiredDueDate: row.desiredDueDate, attachmentIds: row.attachmentIds, ...(row.screenType ? {screenType:row.screenType} : {}) }));
-    let r = requestFromWire(row);
-    const [docs, confirmations, jobs, attachments] = await Promise.all([
-        backendApi!.requirementDocuments(id, undefined, signal), backendApi!.confirmations(id, signal), backendApi!.requirementJobs(id, signal),
-        Promise.all((row.attachmentIds || []).map((a: string) => backendApi!.attachmentStatus(id, a, signal)))
-    ]);
-    r.attachments = attachments.map(a => ({ id: a.id, serverFileId: a.id, name: a.name, size: a.sizeBytes, type: a.contentType, uploadStatus: a.usableForGeneration ? "uploaded" : "failed", error: a.usableForGeneration ? undefined : "첨부 자료 처리가 완료되지 않았습니다." }));
-    const documentRows: Wire[] = [...docs.items];
-    const cursors = new Set<string>();
-    let cursor = docs.nextCursor;
-    while (cursor) {
-        if (cursors.has(cursor))
-            throw new Error("문서 페이지가 반복되었습니다.");
-        cursors.add(cursor);
-        const page = await backendApi!.requirementDocuments(id, cursor, signal);
-        documentRows.push(...page.items);
-        cursor = page.nextCursor;
-    }
-    r.requirements = await Promise.all(documentRows.map(async (d: Wire) => documentFromWire(d.markdown === undefined ? await backendApi!.requirementDocument(id, d.id, signal) : d, id)));
-    if (r.selectedRequirementDocumentId) {
-        try {
-            const artifact = await backendApi!.latestMock(id, signal);
-            if (artifact.requirementDocumentId === r.selectedRequirementDocumentId && artifact.legacyVersion === r.legacyVersion && typeof artifact.html === "string" && artifact.html.length <= 2000000) {
-                r.mocks = [{ id: artifact.id, requirementDocumentId: artifact.requirementDocumentId, legacyVersion: artifact.legacyVersion, createdAt: artifact.createdAt, html: artifact.html, generationNumber: artifact.generationNumber || 1, source: "server", renderer: "server-html", behaviors: [], assumptions: [], unconnectedFeatures: [] } as WorkRequest["mocks"][number]];
-            }
-        }
-        catch (e) {
-            if (!(e instanceof ApiError && e.status === 404))
-                throw e;
-        }
-    }
-    r.confirmations = confirmations.items.map((c: Wire) => {
-        const result = confirmationFromWire(c, r);
-        result.inputRevision = c.inputRevision;
-        result.draftFingerprint = JSON.stringify([c.inputRevision, c.requirementDocumentId]);
-        return result;
-    });
-    if (r.selectedRequirementDocumentId && !row.hasUnconfirmedChanges)
-        r.requirementAppliedAtInputRevision = r.inputRevision;
-    const applied = localStorage.getItem(`soetmul.server-selection:${apiBase}:${id}`);
-    if (applied) {
-        const selected = JSON.parse(applied);
-        if (selected.id === r.selectedRequirementDocumentId && selected.inputRevision === row.inputRevision)
-            r.requirementAppliedAtInputRevision = r.inputRevision;
-    }
-    r.generations = jobs.items.map((j: Wire) => ({ ...j, idempotencyKey: "", inputSnapshot: r.requirements.find(d => d.generationId === j.id)?.inputSnapshot || snapshotOf(r), document: r.requirements.find(d => d.generationId === j.id), error: typeof j.error === "string" ? j.error : j.error?.message }));
-    if (row.latestAnalysisResultId) {
-        const a = await backendApi!.analysisResult(row.latestAnalysisResultId, signal);
-        r.analysis = { ...a, basis: { ...basisOf(r), confirmationId: a.confirmationId, requirementDocumentId: a.requirementDocumentId, legacyVersion: a.legacyVersion }, source: "server" } as WorkRequest["analysis"];
-    }
-    if (row.latestReportId) {
-        const p = await backendApi!.report(row.latestReportId, signal);
-        r.report = { ...p, basis: { ...basisOf(r), confirmationId: p.confirmationId }, analysisId: p.analysisResultId } as WorkRequest["report"];
-    }
-    return r;
+export async function allPages(path: string, signal: AbortSignal, api = backendApi): Promise<Wire[]> {
+  const items: Wire[] = [], seen = new Set<string>(); let cursor: string | undefined;
+  do {
+    const page = await api.get(path + (cursor ? `${path.includes("?") ? "&" : "?"}cursor=${encodeURIComponent(cursor)}` : ""), signal);
+    if (!Array.isArray(page.items)) throw new Error("서버 목록 응답 형식을 확인해주세요.");
+    items.push(...page.items); cursor = page.nextCursor || undefined;
+    if (cursor && seen.has(cursor)) throw new Error("서버 목록 페이지가 반복되었습니다.");
+    if (cursor) seen.add(cursor);
+  } while (cursor);
+  return items;
 }
-export async function serverRequests(signal: AbortSignal) {
-    const rows: WorkRequest[] = [];
-    let cursor: string | undefined;
-    const seen = new Set<string>();
-    do {
-        const page = await backendApi!.listRequests({ cursor }, signal);
-        for (const row of page.items)
-            rows.push(await restoreRequest(row.id, signal));
-        cursor = page.nextCursor;
-        if (cursor && seen.has(cursor))
-            throw new Error("요청 페이지가 반복되었습니다.");
-        if (cursor)
-            seen.add(cursor);
-    } while (cursor);
-    return rows;
+export async function createServerRequest(signal: AbortSignal, api = backendApi): Promise<WorkRequest> {
+  const references = await api.listLegacyReferences(signal);
+  if (!references.items?.length || typeof references.items[0].id !== "string") throw new Error("서버에 사용 가능한 시스템 코드 기준이 없습니다. 설정에서 등록해주세요.");
+  const op = operationKey("create-request", api.base);
+  const row = await api.createRequest({ title: "", legacyReferenceId: references.items[0].id }, op.key, signal);
+  const r = requestFromWire(row);
+  rememberServerRequest(row, fingerprintOf(snapshotOf(r), r.dueDate), api.base); op.done(); return r;
 }
-export async function confirmServerRequest(r: WorkRequest, signal: AbortSignal): Promise<WorkRequest> {
-    await syncRequest(r, signal);
-    return withServerLock(r.id, async () => {
-        const row = serverState(r.id).row;
-        const body = { requirementDocumentId: r.selectedRequirementDocumentId, expectedInputRevision: row.inputRevision, expectedRequestRevision: row.requestRevision };
-        const op = operationKey(`confirm:${r.id}:${JSON.stringify(body)}`);
-        const wire = await backendApi!.confirm(r.id, body, op.key, signal);
-        // The returned revision avoids silently accepting another editor's changes.
-        rememberServerRequest({ ...row, requestRevision: wire.requestRevision ?? row.requestRevision + 1, activeConfirmationId: wire.id }, serverState(r.id).fingerprint);
-        op.done();
-        const c = confirmationFromWire(wire, r);
-        return { ...r, confirmations: [c, ...r.confirmations.filter(x => x.id !== c.id)], activeConfirmationId: c.id, scopeReviewed: false, estimateReviewed: false };
-    });
-}
-export class JobFailure extends Error {
-}
-export async function pollJob(get: () => Promise<Wire>, signal: AbortSignal): Promise<Wire> {
-    for (let n = 0; n < 600; n++) {
-        const job = await get();
-        if (job.status === "failed")
-            throw new JobFailure(typeof job.error === "string" ? job.error : job.error?.message || "서버 작업에 실패했습니다.");
-        if (job.status === "succeeded")
-            return job;
-        if (!["queued", "running"].includes(job.status))
-            throw new Error("작업 상태 응답이 올바르지 않습니다.");
-        await waitForPoll(signal, Math.min(30000, Math.max(200, Number(job.pollAfterMs) || 1000)));
-    }
-    throw new Error("서버 작업이 진행 중입니다. 다시 조회해주세요.");
-}
-export async function serverReport(r: WorkRequest, signal: AbortSignal) {
-    const body = { requestId: r.id, confirmationId: r.activeConfirmationId, analysisResultId: r.analysis!.id };
-    const op = operationKey(`report:${JSON.stringify(body)}`);
-    const ticket = `soetmul.report-job:${apiBase}:${JSON.stringify(body)}`;
-    let id = localStorage.getItem(ticket);
-    if (!id) {
-        const started = await backendApi!.startReport(body, op.key, signal);
-        id = started.id;
-        localStorage.setItem(ticket, id!);
-    }
-    let job: Wire;
+export async function restoreRequest(id: string, signal: AbortSignal, api = backendApi): Promise<WorkRequest> {
+  const row = await api.getRequest(id, signal);
+  if (row.id !== id) throw new Error("서버에서 다른 요청을 반환했습니다.");
+  const r = requestFromWire(row), route = `/requests/${encodeURIComponent(id)}`;
+  const [docs, confirmations, jobs, attachments] = await Promise.all([
+    allPages(route + "/requirement-documents", signal, api), allPages(route + "/requirement-confirmations", signal, api),
+    allPages(route + "/requirement-generations", signal, api),
+    Promise.all((row.attachmentIds || []).map((f: string) => api.attachmentStatus(id, f, signal))),
+  ]);
+  r.attachments = attachments.map(a => {
+    if (a.requestId && a.requestId !== id) throw new Error("첨부자료의 요청 기준이 다릅니다.");
+    return { id: a.id, serverFileId: a.id, name: a.name, size: a.sizeBytes, type: a.contentType,
+      uploadStatus: a.usableForGeneration ? "uploaded" : "failed", error: a.usableForGeneration ? undefined : "첨부자료 처리가 완료되지 않았습니다." };
+  });
+  r.requirements = await Promise.all(docs.map(async d => documentFromWire(typeof d.markdown === "string" ? d : await api.requirementDocument(id, d.id, signal), id)));
+  r.requirements.sort((a, b) => b.generationNumber - a.generationNumber);
+  r.confirmations = await Promise.all(confirmations.map(async c => confirmationFromWire(c.documentSnapshot ? c : await api.confirmation(id, c.id, signal), r)));
+  if (r.selectedRequirementDocumentId && row.hasUnconfirmedChanges === false) r.requirementAppliedAtInputRevision = r.inputRevision;
+  const selection = JSON.parse(localStorage.getItem(`soetmul.server-selection:${scope(api.base)}:${id}`) || "null");
+  if (selection && selection.id === r.selectedRequirementDocumentId && selection.inputRevision === row.inputRevision) r.requirementAppliedAtInputRevision = r.inputRevision;
+  r.generations = jobs.map(j => {
+    const document = r.requirements.find(d => d.generationId === j.id);
+    return { ...j, idempotencyKey: j.idempotencyKey || "", inputSnapshot: document?.inputSnapshot || j.inputSnapshot || {
+      unavailable: true, requestId: id, inputRevision: j.inputRevision, title: "", text: "", html: "", attachmentIds: [], attachmentNames: [] },
+      document, error: typeof j.error === "string" ? j.error : j.error?.message } as WorkRequest["generations"][number];
+  });
+  for (const job of r.generations) localStorage.setItem(`soetmul.md-job:${scope(api.base)}:${id}:${job.id}`, JSON.stringify(job));
+  if (r.selectedRequirementDocumentId) {
     try {
-        job = await pollJob(() => backendApi!.reportJob(id!, signal), signal);
-    }
-    catch (e) {
-        if (e instanceof JobFailure) {
-            op.done();
-            localStorage.removeItem(ticket);
-        }
-        throw e;
-    }
-    const result = job.result?.markdown !== undefined ? job.result : await backendApi!.report(job.reportId || job.result?.id, signal);
-    if (result.confirmationId !== r.activeConfirmationId || result.analysisResultId !== r.analysis!.id || typeof result.markdown !== "string")
-        throw new Error("리포트 생성 기준이 일치하지 않습니다.");
-    op.done();
-    localStorage.removeItem(ticket);
-    return { id: result.id, analysisId: result.analysisResultId, markdown: result.markdown, basis: basisOf(r) };
+      const m = await api.latestMock(id, signal);
+      if (m.requestId && m.requestId !== id) throw new Error("생성 화면의 요청 기준이 다릅니다.");
+      if (m.requirementDocumentId === r.selectedRequirementDocumentId && m.legacyVersion === r.legacyVersion && m.screenType === r.screenType && typeof m.html === "string" && m.html.length <= 2000000)
+        r.mocks = [{ ...m, id: m.id, requirementDocumentId: m.requirementDocumentId, legacyVersion: m.legacyVersion, createdAt: m.createdAt, generationNumber: m.generationNumber || 1, source: "server", renderer: "server-html", behaviors: [], assumptions: [], unconnectedFeatures: [] }];
+    } catch (e) { if (!(e instanceof ApiError && e.status === 404)) throw e; }
+  }
+  if (row.latestAnalysisResultId) {
+    const a = await api.analysisResult(row.latestAnalysisResultId, signal);
+    if ((a.requestId && a.requestId !== id) || a.id !== row.latestAnalysisResultId) throw new Error("분석 결과의 요청 기준이 다릅니다.");
+    const confirmed = r.confirmations.find(c => c.id === a.confirmationId);
+    if (!confirmed || confirmed.documentSnapshot.id !== a.requirementDocumentId) throw new Error("분석 결과의 확정·문서 기준이 다릅니다.");
+    r.analysis = await analysisFromServer(a, { basis: { ...basisOf(r), confirmationId: a.confirmationId,
+      requirementDocumentId: a.requirementDocumentId, legacyVersion: a.legacyVersion, screenType: a.screenType } });
+  }
+  if (row.latestSimilarCaseAnalysisResultId && r.analysis && sameBasis(basisOf(r), r.analysis.basis)) {
+    r.similarCaseAnalysis = await similarCaseAnalysisFromServer(await api.similarCaseResult(row.latestSimilarCaseAnalysisResultId, signal), r);
+  }
+  if (!localStorage.getItem(dirtyKey(id)) || !serverState(id, api.base)) rememberServerRequest(row, fingerprintOf(snapshotOf(r), r.dueDate), api.base);
+  return r;
 }
-export function registrationFromWire(row: Wire): Registration {
-    const c = row.confirmationSnapshot, a = row.analysisSnapshot, p = row.reportSnapshot;
-    if (!c || !a || !p)
-        throw new Error("등록 스냅샷 응답이 누락되었습니다.");
-    const r = { ...blankRequest(), id: row.requestId, title: row.title, inputRevision: c.inputRevision, legacyVersion: a.legacyVersion, selectedRequirementDocumentId: c.requirementDocumentId, activeConfirmationId: c.id };
-    const confirmation = confirmationFromWire(c, r);
-    r.confirmations = [confirmation];
-    r.requirements = [confirmation.documentSnapshot];
-    r.requirementAppliedAtInputRevision = r.inputRevision;
-    r.analysis = { ...a, basis: basisOf(r), source: "server" };
-    r.report = { id: p.id, analysisId: p.analysisResultId, basis: basisOf(r), markdown: p.markdown };
-    r.scopeReviewed = true;
-    r.estimateReviewed = true;
-    return { id: row.id, key: row.id, registeredAt: row.registeredAt, request: r };
+export async function serverRequests(signal: AbortSignal, api = backendApi): Promise<WorkRequest[]> {
+  const items = await allPages("/requests", signal, api);
+  return Promise.all(items.map(row => restoreRequest(row.id, signal, api)));
 }
-export async function registerServerRequest(r: WorkRequest, signal: AbortSignal) {
-    if (!canRegister(r))
-        throw new Error("현재 기준의 분석·리포트와 최종 검토 확인이 필요합니다.");
-    const body = { requestId: r.id, confirmationId: r.activeConfirmationId, analysisResultId: r.analysis!.id, reportId: r.report!.id, reviewChecks: { scopeReviewed: r.scopeReviewed, estimateReviewed: r.estimateReviewed } };
-    const op = operationKey(`register:${JSON.stringify(body)}`);
-    const created = await backendApi!.register(body, op.key, signal);
-    const result = registrationFromWire(created.confirmationSnapshot ? created : await backendApi!.registration(created.id, signal));
+export async function confirmServerRequest(r: WorkRequest, signal: AbortSignal, api = backendApi): Promise<WorkRequest> {
+  await syncInput(snapshotOf(r), signal, r.dueDate, api);
+  return mutateRequest(r.id, signal, async row => {
+    const confirmed = confirmRequirement(r), c = confirmed.confirmations.find(x => x.id === confirmed.activeConfirmationId)!;
+    const op = operationKey(`confirm:${r.id}:${c.draftFingerprint}`, api.base);
+    const wire = await api.request(`/requests/${encodeURIComponent(r.id)}/requirement-confirmations`, signal,
+      jsonPost({ requirementDocumentId: c.documentSnapshot.id, expectedInputRevision: row.inputRevision, expectedRequestRevision: row.requestRevision }, op.key));
+    if ((wire.requestId && wire.requestId !== r.id) || typeof wire.id !== "string" || !wire.documentSnapshot || wire.documentSnapshot.id !== c.documentSnapshot.id || wire.documentSnapshot.markdown !== c.documentSnapshot.markdown)
+      throw new Error("서버 확정의 요구사항 기준이 다릅니다.");
+    rememberServerRequest({ ...row, requestRevision: wire.requestRevision ?? row.requestRevision + 1, activeConfirmationId: wire.id }, serverState(r.id, api.base)?.fingerprint, api.base);
     op.done();
-    return result;
+    return { ...confirmed, activeConfirmationId: wire.id, confirmations: [{ ...c, ...wire, inputRevision: r.inputRevision,
+      documentSnapshot: { ...c.documentSnapshot, ...wire.documentSnapshot }, draftFingerprint: c.draftFingerprint }, ...r.confirmations] };
+  }, api);
+}
+export async function registerServerRequest(r: WorkRequest, signal: AbortSignal, api = backendApi): Promise<Registration> {
+  if (!canRegister(r)) throw new Error("현재 확정과 일치하는 영향도·유사사례 분석이 필요합니다.");
+  const body = { requestId: r.id, confirmationId: r.activeConfirmationId, analysisResultId: r.analysis!.id, similarCaseAnalysisId: r.similarCaseAnalysis!.id };
+  const op = operationKey(`register:${JSON.stringify(body)}`, api.base);
+  const created = await api.register(body, op.key, signal);
+  if (typeof created.reportId !== "string" || (created.id && created.id !== created.reportId)) throw new Error("등록 결과 reportId가 올바르지 않습니다.");
+  const detail = created.confirmationSnapshot ? created : await api.registration(created.reportId, signal);
+  const result = registrationFromServer(detail);
+  if (result.id !== created.reportId || result.request.id !== r.id || result.request.activeConfirmationId !== r.activeConfirmationId || result.request.analysis?.id !== r.analysis?.id || result.request.similarCaseAnalysis?.id !== r.similarCaseAnalysis?.id)
+    throw new Error("등록 결과의 요청·확정·분석 기준이 다릅니다.");
+  op.done(); return result;
 }

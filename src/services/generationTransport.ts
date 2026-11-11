@@ -1,4 +1,3 @@
-import { apiBase, createBackendApi } from "./backendApi";
 import {
   generationFormData,
   type SourceArchive,
@@ -14,7 +13,12 @@ export function createGenerationTransport(
     signal: AbortSignal,
     init: RequestInit = {},
   ) {
-    return createBackendApi(root, fetcher).request(path, signal, init);
+    const response = await fetcher(root + path, { ...init, signal, credentials: "same-origin" });
+    if (!response.ok)
+      throw new Error(
+        `서버 요청에 실패했습니다 (${response.status}). 입력과 코드 ZIP은 보존됩니다.`,
+      );
+    return response.json();
   }
   return {
     async start(
@@ -25,12 +29,15 @@ export function createGenerationTransport(
       key: string,
       signal: AbortSignal,
       documentId?: string,
+      screenType?: "new" | "modify",
     ) {
       if (!archives.length)
         throw new Error(
           "서버 전송에 사용할 코드 ZIP을 설정에서 등록하고 선택해주세요.",
         );
       const body = generationFormData(file, archives, version);
+      body.append("legacyReferenceId", version);
+      if (screenType) body.append("screenType", screenType);
       if (documentId) body.append("requirementDocumentId", documentId);
       return json(path, signal, {
         method: "POST",
@@ -42,7 +49,10 @@ export function createGenerationTransport(
   };
 }
 
-export const generationBase = apiBase;
+export const generationBase =
+  (import.meta as ImportMeta & { env?: Record<string, string> }).env
+    ?.VITE_API_URL ||
+  (import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_GENERATION_API_URL || "";
 export const generationTransport = generationBase
   ? createGenerationTransport(generationBase)
   : undefined;

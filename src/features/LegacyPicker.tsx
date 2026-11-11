@@ -1,5 +1,4 @@
-import { localMockSettings } from "../mocks/fixtures";
-import { backendApi } from "../services/backendApi";
+import { apiJson, serverMode } from "../services/api";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import type { LegacyReference } from "../domain/legacySources";
@@ -11,6 +10,10 @@ import {
 } from "../components/WorkflowShell";
 import type { WorkspaceProps } from "./workspace";
 
+const screenTypes = [
+  ["new", "신규", "새 화면"],
+  ["modify", "수정", "기존 화면에 추가"],
+] as const;
 function LegacyCheck({ checked }: { checked: boolean }) {
   return (
     <span
@@ -30,12 +33,16 @@ function LegacyCheck({ checked }: { checked: boolean }) {
 }
 
 export function LegacyPicker({ r, edit, go, saved }: WorkspaceProps) {
-  const [serverReferences,setServerReferences]=useState<{id:string;systemName:string;version:string}[]>([]);
+  const [serverReferences, setServerReferences] = useState<{id: string; systemName: string; version: string}[]>([]);
   const [references, setReferences] = useState<LegacyReference[]>([]),
     [error, setError] = useState("");
   useEffect(() => {
     let cancelled = false;
-    if(backendApi)void backendApi.listLegacyReferences().then(page=>{if(!cancelled)setServerReferences(page.items);}).catch(e=>{if(!cancelled)setError(e.message);});
+    const controller = new AbortController();
+    if (serverMode) void apiJson("/legacy-references", controller.signal).then(page => {
+      if (!Array.isArray(page.items)) throw new Error("서버 시스템 목록 형식 오류");
+      if (!cancelled) setServerReferences(page.items);
+    }).catch(e => { if (!cancelled) setError(e instanceof Error ? e.message : "서버 시스템 조회 실패"); });
     void legacyRepository
       .references()
       .then((rows) => {
@@ -46,9 +53,10 @@ export function LegacyPicker({ r, edit, go, saved }: WorkspaceProps) {
           setError(e instanceof Error ? e.message : "코드 기준 조회 실패");
       });
     return () => {
-      cancelled = true;
+      cancelled = true; controller.abort();
     };
   }, []);
+  const selectedReference = references.some(ref => ref.id === r.legacyVersion);
   return (
     <>
       <ScreenTitle
@@ -56,7 +64,7 @@ export function LegacyPicker({ r, edit, go, saved }: WorkspaceProps) {
         description="수정해야 할 나의 자원을 선택해 주세요."
       />
       <div className="legacy-picker-heading">
-        <h2>① 레거시 자원</h2>
+        <h2>① 시스템 선택</h2>
         <Link to="/settings/legacy">+ 기존 코드 ZIP 등록</Link>
       </div>
       {error && (
@@ -64,19 +72,9 @@ export function LegacyPicker({ r, edit, go, saved }: WorkspaceProps) {
           {error}
         </p>
       )}
+      {!references.length && !error && <p>등록된 시스템이 없습니다. 기존 코드 ZIP을 등록해주세요.</p>}
+      {serverReferences.map(ref => <p key={ref.id} className="workflow-info"><b>{ref.systemName}</b> · {ref.version}<small>서버에 등록된 코드 기준입니다. 분석에 보낼 ZIP은 아래 등록한 시스템에서 선택해주세요.</small></p>)}
       <div className="legacy-reference-list">
-        <button
-          className={r.legacyVersion === localMockSettings.legacy.version ? "selected" : ""}
-          aria-pressed={r.legacyVersion === localMockSettings.legacy.version}
-          onClick={() => edit({ legacyVersion: localMockSettings.legacy.version })}
-        >
-          <span>
-            <b>{localMockSettings.legacy.name}</b>
-            <small>{localMockSettings.legacy.description}</small>
-          </span>
-          <LegacyCheck checked={r.legacyVersion === localMockSettings.legacy.version} />
-        </button>
-        {serverReferences.map(ref=><div key={ref.id} className="workflow-info"><b>{ref.systemName}</b> · {ref.version}<small>서버 코드 기준 · ZIP 동시 전송은 아래 브라우저 보관 기준을 선택해주세요.</small></div>)}
         {references
           .slice()
           .reverse()
@@ -110,12 +108,12 @@ export function LegacyPicker({ r, edit, go, saved }: WorkspaceProps) {
       </div>
       <h2 className="legacy-request-label">② 화면 종류</h2>
       <div className="screen-type-options">
-        {localMockSettings.screenTypes.map(({value, name, detail}) => (
+        {screenTypes.map(([value, name, detail]) => (
           <button
             key={value}
             className={r.screenType === value ? "selected" : ""}
             aria-pressed={r.screenType === value}
-            onClick={() => edit({ screenType: value as "new" | "modify" })}
+            onClick={() => edit({ screenType: value })}
           >
             <span>{name}</span>
             <small>{detail}</small>
@@ -127,17 +125,22 @@ export function LegacyPicker({ r, edit, go, saved }: WorkspaceProps) {
         r={r}
         edit={edit}
         initiallyOpen
-        onContinue={() => go("input?view=materials")}
+        onContinue={() => { if (r.screenType && selectedReference) go("input?view=materials"); }}
       />
       <StepFooter
         next={{
           label: "쇳물 녹이기 ›",
-          disabled: !saved,
+          disabled: !saved || !r.screenType || !selectedReference,
           type: "submit",
           form: `request-details-${r.id}`,
           name: "continue",
         }}
-        reason="저장이 완료되면 진행할 수 있어요"
+        nextText={r.requirements.length ? {
+          label: "성분 보기로 돌아가기 ›",
+          disabled: !saved || !r.screenType || !selectedReference,
+          onClick: () => go("input?view=requirements"),
+        } : undefined}
+        reason={!saved ? "저장이 완료되면 진행할 수 있어요" : "신규 또는 수정을 선택해주세요"}
       />
     </>
   );

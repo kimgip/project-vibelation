@@ -1,4 +1,4 @@
-import { backendApi } from "../services/backendApi";
+import { serverMode } from "../services/api";
 import { ServerLegacySettings } from "./ServerLegacySettings";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
@@ -123,13 +123,9 @@ export function LegacySettings() {
     <>
       <ScreenTitle
         title="⚙ 설정"
-        description="기존 코드 ZIP을 보관하고, Mock 생성·레거시 분석에 사용할 틀을 관리합니다."
+        description="기존 코드 ZIP을 보관하고, Mock 생성·시스템 분석에 사용할 틀을 관리합니다."
       />
-      {backendApi && <ServerLegacySettings />}
-      <p className="workflow-info">
-        ZIP은 이 브라우저에 보관됩니다. 서버 전송은 Mock 생성·분석 시 수행하며,
-        코드 내부 검증·정적 분석은 서버의 책임입니다.
-      </p>
+      {serverMode && <ServerLegacySettings />}
       {error && (
         <div className="inline-error" role="alert">
           {error}{" "}
@@ -144,9 +140,9 @@ export function LegacySettings() {
         </p>
       )}
       <label className="legacy-system-picker">
-        등록된 레거시 틀
+        등록된 시스템
         <select
-          aria-label="등록된 레거시 틀"
+          aria-label="등록된 시스템"
           value={draft.revision ? draft.id : ""}
           disabled={busy || !loaded}
           onChange={(e) => select(e.target.value)}
@@ -162,7 +158,7 @@ export function LegacySettings() {
       </label>
       <section className="workflow-card legacy-editor">
         <div className="workflow-card-heading">
-          <h2>{draft.revision ? "레거시 틀 수정" : "새 틀 등록"}</h2>
+          <h2>{draft.revision ? "틀 수정" : "새 틀 등록"}</h2>
           <button disabled={busy || !loaded} onClick={() => select("")}>
             새 틀
           </button>
@@ -260,10 +256,6 @@ export function LegacySettings() {
                 />
               </label>
             </div>
-            <small>
-              브라우저 보관 제한: ZIP 파일당 100MiB. GitHub 계정 연결 없이
-              내려받은 ZIP을 선택합니다.
-            </small>
           </div>
         </fieldset>
         <div className="workflow-actions">

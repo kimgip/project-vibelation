@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { ImpactGraph } from "../components/ImpactGraph";
+
 import {
   hasConfirmedRequirement,
   isCurrent,
@@ -10,7 +11,6 @@ import {
   StepFooter,
 } from "../components/WorkflowShell";
 import { Empty, LaneBadge, Tag } from "../components/shared";
-import { generationBase } from "../services/generationTransport";
 import type { WorkspaceProps } from "./workspace";
 export function AnalysisPage({
   r,
@@ -20,9 +20,6 @@ export function AnalysisPage({
   saved,
   go,
 }: WorkspaceProps) {
-  const [selected, setSelected] = useState("");
-  const resources = isCurrent(r, r.analysis) ? r.analysis?.impacts || [] : [];
-  const item = resources.find((i) => i.id === selected) || resources[0];
   return (
     <>
       <ScreenTitle
@@ -30,89 +27,9 @@ export function AnalysisPage({
         description="탕도는 쇳물이 틀 곳곳으로 흘러가는 길이에요. 요구사항이 닿는 화면·로직·API·DB를 찾아요."
       />
       <RequestContext r={r} edit={edit} />
-      <div className="workflow-notice">
-        <span>
-          {generationBase
-            ? "분석 실행 시 확정 MD와 선택한 코드 ZIP을 서버로 전송합니다."
-            : "로컬 시연 · 다운로드 센터 고정 시나리오이며 실제 코드 ZIP을 분석하지 않습니다."}
-        </span>
-        <button
-          disabled={!saved || !!busy || !hasConfirmedRequirement(r)}
-          onClick={() => run("analysis")}
-        >
-          {busy === "analysis"
-            ? "분석 중…"
-            : resources.length
-              ? "다시 분석"
-              : "레거시 분석"}
-        </button>
-      </div>
-      {item ? (
-        <div className="analysis-grid">
-          <section className="panel">
-            <div className="panel-heading">
-              <span>수정 · 검토 자원</span>
-              <Tag>{resources.length}개 후보</Tag>
-            </div>
-            {resources.map((resource) => (
-              <button
-                className={`resource ${item.id === resource.id ? "selected" : ""}`}
-                key={resource.id}
-                aria-pressed={item.id === resource.id}
-                onClick={() => setSelected(resource.id)}
-              >
-                <LaneBadge type={resource.type} />
-                <span>
-                  <b>{resource.name}</b>
-                  <small>{resource.path}</small>
-                </span>
-                <span aria-hidden="true">›</span>
-              </button>
-            ))}
-          </section>
-          <section className="panel">
-            <div className="panel-heading">
-              <span>상세보기</span>
-              <Tag>변경 제안</Tag>
-            </div>
-            <div className="resource-detail">
-              <code>{item.path}</code>
-              <div className="diff before">
-                <b>
-                  현재 구조
-                  {r.analysis?.source !== "server" ? " · 시연 가정" : ""}
-                </b>
-                <p>{item.current}</p>
-              </div>
-              <div className="diff after">
-                <b>변경 방향</b>
-                <p>{item.proposed}</p>
-              </div>
-              <h3>연결 근거</h3>
-              <p>{item.reason || "제공된 근거 없음"}</p>
-              <h3>대상</h3>
-              <p>{item.name}</p>
-              <code>{item.path}</code>
-              <p>
-                <Tag>잠정 공수 {item.days}일</Tag>
-              </p>
-              <small>
-                출처:{" "}
-                {r.analysis?.source === "server"
-                  ? "서버 분석 결과"
-                  : "다운로드 센터 샘플"}
-                . 실제 변경 전 담당자 검토가 필요합니다.
-              </small>
-            </div>
-          </section>
-        </div>
-      ) : (
-        <Empty>
-          {busy === "analysis"
-            ? "확정한 요구사항과 코드 기준으로 분석 중입니다."
-            : "요구사항을 먼저 확정한 뒤 분석해주세요."}
-        </Empty>
-      )}
+      {isCurrent(r, r.analysis) && r.analysis?.impactGraphError && <p role="alert">영향도 지도 데이터 오류 ({r.analysis.impactGraphError}). 자원 상세를 확인해주세요.</p>}
+      {isCurrent(r, r.analysis) && r.analysis?.impactGraph && <ImpactGraph graph={r.analysis.impactGraph} analysisId={r.analysis.id} />}
+      {!r.analysis?.impactGraph && <Empty>{busy === "analysis" ? "확정한 요구사항과 코드를 분석하고 있습니다." : "지도 데이터가 없습니다. 성분 보기에서 요구사항을 확인한 뒤 다시 진행해주세요."}</Empty>}
       <StepFooter
         back={{
           label: "‹ 미리 붓기",
@@ -121,7 +38,7 @@ export function AnalysisPage({
         next={{
           label: "붓기 준비 완료 ›",
           disabled: !saved || !!busy || !readyForReview(r),
-          onClick: () => run("report"),
+          onClick: () => run("similarCaseAnalysis"),
         }}
         reason={
           !saved
@@ -129,7 +46,7 @@ export function AnalysisPage({
             : busy === "analysis"
               ? "분석이 끝나면 진행할 수 있어요"
               : busy
-                ? "리포트 생성이 끝나면 진행할 수 있어요"
+                ? "유사사례 분석이 끝나면 진행할 수 있어요"
                 : !hasConfirmedRequirement(r)
                   ? "요구사항을 확정하면 진행할 수 있어요"
                   : "분석 결과를 받으면 진행할 수 있어요"

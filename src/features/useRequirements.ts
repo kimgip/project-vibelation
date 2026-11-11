@@ -1,5 +1,4 @@
-import { backendApi } from "../services/backendApi";
-import { syncRequest } from "../services/serverWorkspace";
+import { apiJson, serverMode } from "../services/api";
 import { useEffect, useState } from "react";
 import {
   canGenerate,
@@ -67,12 +66,13 @@ export function useRequirements(
     const controller = new AbortController();
     const timer = setTimeout(async () => {
       try {
-        if(backendApi && pending.id.startsWith("pending:")) await syncRequest(r,controller.signal);
         const result = pending.id.startsWith("pending:")
           ? await requirementsService.start(
               pending.inputSnapshot,
               pending.idempotencyKey,
               controller.signal,
+              r.requirements.find(d => d.id === pending.contextDocumentIds?.[0]),
+              pending.generationNumber,
             )
           : await requirementsService.get(r.id, pending.id, controller.signal);
         if (controller.signal.aborted) return;
@@ -84,7 +84,7 @@ export function useRequirements(
                 (g) => g.id !== pending.id,
               ),
             },
-            result,
+            { ...pending, ...result, inputSnapshot: result.inputSnapshot || pending.inputSnapshot, contextDocumentIds: result.contextDocumentIds || pending.contextDocumentIds },
           ),
         }));
       } catch (e) {
@@ -110,6 +110,7 @@ export function useRequirements(
     const key = crypto.randomUUID();
     const g: RequirementGeneration = {
       id: `pending:${key}`,
+      uiInputRevision: r.inputRevision,
       idempotencyKey: key,
       generationNumber:
         Math.max(
@@ -118,6 +119,9 @@ export function useRequirements(
           ...r.requirements.map((d) => d.generationNumber),
         ) + 1,
       status: "queued",
+      phase: "queued",
+      displayTitle: r.title || "요구사항",
+      contextDocumentIds: r.requirements.length ? [r.requirements.slice().sort((a, b) => b.generationNumber - a.generationNumber)[0].id] : [],
       inputSnapshot: snapshotOf(r),
       createdAt: new Date().toISOString(),
     };
@@ -133,9 +137,10 @@ export function useRequirements(
         !files.some((f) => f.name === a.name && a.uploadStatus !== "uploaded"),
     );
     try {
-      if(backendApi) {
-        const p=await backendApi.attachmentPolicy(new AbortController().signal);
-        if(remaining.length+files.length>p.maxFilesPerRequest || files.some(f=>f.size>p.maxFileBytes || !p.allowedExtensions.includes(f.name.split(".").pop()!.toLowerCase())) || remaining.reduce((n,a)=>n+a.size,0)+files.reduce((n,f)=>n+f.size,0)>p.maxTotalBytesPerRequest)throw new Error("첨부파일이 서버 정책의 형식·개수·용량 한도를 초과했습니다.");
+      if (serverMode) {
+        const policy = await apiJson("/attachment-policy", new AbortController().signal);
+        if (!Array.isArray(policy.allowedExtensions) || !Number.isFinite(policy.maxFileBytes) || !Number.isFinite(policy.maxFilesPerRequest) || !Number.isFinite(policy.maxTotalBytesPerRequest)) throw new Error("서버 첨부 정책 응답을 확인해주세요.");
+        if (remaining.length + files.length > policy.maxFilesPerRequest || files.some(file => file.size > policy.maxFileBytes || !policy.allowedExtensions.includes(file.name.split(".").pop()!.toLowerCase())) || remaining.reduce((sum, a) => sum + a.size, 0) + files.reduce((sum, f) => sum + f.size, 0) > policy.maxTotalBytesPerRequest) throw new Error("첨부파일이 서버 정책의 형식·개수·용량 한도를 초과했습니다.");
       } else validateFiles(files, remaining.length);
     } catch (e) {
       setError(e instanceof Error ? e.message : "파일을 확인해주세요.");

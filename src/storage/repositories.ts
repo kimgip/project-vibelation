@@ -1,17 +1,17 @@
-import { apiBase } from "../services/backendApi";
+import { reviewSummary } from "../domain/reviewSummary";
+import { cases } from "../mocks/download-center";
 import {
   blankRequest,
   canRegister,
   type Registration,
   type WorkRequest,
 } from "../domain/types";
-export const REQUEST_KEY = apiBase ? `soetmul.server-cache:${apiBase}:requests` : "vibelation.requests.v4",
-  HISTORY_KEY = apiBase ? `soetmul.server-cache:${apiBase}:history` : "vibelation.history.v4";
+export const REQUEST_KEY = "vibelation.requests.v4",
+  HISTORY_KEY = "vibelation.history.v4";
 const object = (v: unknown): v is Record<string, unknown> =>
   !!v && typeof v === "object" && !Array.isArray(v);
-function validRequest(v: unknown): v is WorkRequest {
+export function validRequest(v: unknown): v is WorkRequest {
   if (!object(v)) return false;
-  if(v.screenType!==undefined && !["new","modify"].includes(String(v.screenType)))return false;
   const strings = [
     "id",
     "title",
@@ -45,7 +45,6 @@ function validRequest(v: unknown): v is WorkRequest {
   const snapshotValid = (s: unknown) =>
     object(s) &&
     typeof s.requestId === "string" &&
-    (s.screenType===undefined || ["new","modify"].includes(String(s.screenType))) &&
     Number.isInteger(s.inputRevision) &&
     ["title", "text", "html"].every((k) => typeof s[k] === "string") &&
     Array.isArray(s.attachmentIds) &&
@@ -175,7 +174,7 @@ function validRequest(v: unknown): v is WorkRequest {
       ))
   )
     return false;
-  for (const key of ["requirement", "analysis", "systemMock", "report"]) {
+  for (const key of ["requirement", "analysis", "systemMock", "report", "similarCaseAnalysis"]) {
     const a = v[key];
     if (a === undefined) continue;
     if (
@@ -186,6 +185,7 @@ function validRequest(v: unknown): v is WorkRequest {
       typeof a.basis.legacyVersion !== "string"
     )
       return false;
+    if (key === "similarCaseAnalysis" && (typeof a.id !== "string" || typeof a.analysisId !== "string" || !Array.isArray(a.cases) || !["ready","no_matches","insufficient_data"].includes(String(a.status)))) return false;
     if (
       (key === "requirement" || key === "report") &&
       typeof a.markdown !== "string"
@@ -206,10 +206,10 @@ function validRequest(v: unknown): v is WorkRequest {
               "proposed",
               "reason",
             ].every((k) => typeof i[k] === "string") &&
-            typeof i.days === "number",
+            (i.days === undefined || typeof i.days === "number"),
         ) ||
         !["totalDays", "durationDays", "bufferDays"].every(
-          (k) => typeof a[k] === "number",
+          (k) => (a[k] === undefined || typeof a[k] === "number"),
         ))
     )
       return false;
@@ -323,7 +323,6 @@ function normalize(r: WorkRequest): WorkRequest {
 }
 export const repository = {
   requests(): WorkRequest[] {
-    if(apiBase)return (read(REQUEST_KEY,validRequest) || []).map(normalize);
     const current =
       read(REQUEST_KEY, validRequest) ??
       read("vibelation.requests.v3", validRequest) ??
@@ -396,18 +395,22 @@ export const repository = {
       };
     });
   },
-  register(r: WorkRequest): Registration {
+  register(r: WorkRequest, serverId?: string): Registration {
     if (!canRegister(r))
-      throw new Error("최신 버전 산출물과 두 가지 검토 확인이 필요합니다.");
+      throw new Error("현재 확정과 일치하는 영향도·유사사례 분석이 필요합니다.");
     const items = this.history();
-    const key = `${r.id}:${r.activeConfirmationId}:${r.legacyVersion}:${r.analysis!.id}:${r.report!.id}`;
+    const key = `${r.id}:${r.activeConfirmationId}:${r.legacyVersion}:${r.analysis!.id}:${r.similarCaseAnalysis!.id}`;
     const existing = items.find((x) => x.key === key);
     if (existing) return existing;
+    const reportId = serverId || crypto.randomUUID();
     const result = {
-      id: crypto.randomUUID(),
+      id: reportId,
+      reportId,
       key,
       registeredAt: new Date().toISOString(),
       request: structuredClone(r),
+      reviewSummarySnapshot: reviewSummary(r),
+      similarCasesSnapshot: structuredClone(r.similarCaseAnalysis?.cases || []),
     };
     localStorage.setItem(
       HISTORY_KEY,

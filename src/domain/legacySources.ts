@@ -1,9 +1,8 @@
-import localMockSettings from "../mocks/local-settings.json" with { type: "json" };
 export type SourceRole = "frontend" | "backend";
 /** Built-in demo 틀 (no ZIP). Name matches the 틀 고르기 list. */
 export const DEMO_LEGACY = {
-  id: localMockSettings.legacy.version,
-  name: localMockSettings.legacy.name,
+  id: "DEMO-2026.10",
+  name: "다운로드 센터 · 시연용 틀",
 } as const;
 export interface SourceArchive {
   id: string;

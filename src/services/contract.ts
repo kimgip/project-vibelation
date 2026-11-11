@@ -1,4 +1,8 @@
-import { analysisFixture, reportFixture, localMockSettings } from "../mocks/fixtures";
+import { validateImpactGraph } from "../domain/impactGraph";
+import graphFixture from "../mocks/step02-impact-graph.json" with { type: "json" };
+import type { ImpactGraph } from "../domain/impactGraph";
+import { apiJson, jsonPost, serverMode } from "./api";
+import { analysisFixture, reportFixture } from "../mocks/fixtures";
 import { renderMockTemplate } from "../mocks/template";
 import {
   basisOf,
@@ -16,13 +20,13 @@ import {
   type SourceArchive,
 } from "../domain/legacySources";
 import { generationTransport, waitForPoll } from "./generationTransport";
-const wait = (signal: AbortSignal, delay: number) =>
+const wait = (signal: AbortSignal) =>
   new Promise<void>((resolve, reject) => {
     if (signal.aborted) {
       reject(new DOMException("취소됨", "AbortError"));
       return;
     }
-    const timer = setTimeout(resolve, delay);
+    const timer = setTimeout(resolve, 500);
     signal.addEventListener(
       "abort",
       () => {
@@ -46,11 +50,10 @@ export function analysisInput(r: WorkRequest, sources: SourceArchive[] = []) {
   };
 }
 export function analysisFormData(input: AnalysisInput): FormData {
-  return generationFormData(
-    input.file,
-    input.sources || [],
-    input.basis.legacyVersion,
-  );
+  const body = generationFormData(input.file, input.sources || [], input.basis.legacyVersion);
+  if (input.basis.screenType) body.append("screenType", input.basis.screenType);
+  if (input.sources?.length) body.append("legacyReferenceId", input.basis.legacyVersion);
+  return body;
 }
 export interface AnalysisInput {
   basis: Basis;
@@ -68,10 +71,12 @@ export const mockService: VibelationService = {
     const body = analysisFormData(input);
     if (!(body.get("file") instanceof File) || !input.file.name.endsWith(".md"))
       throw new Error("요구사항 MD 파일이 필요합니다.");
-    await wait(s, localMockSettings.timing.analysisDelayMs);
+    await wait(s);
+    const id = crypto.randomUUID();
     return {
       basis: input.basis,
-      id: crypto.randomUUID(),
+      id,
+      impactGraph: { ...structuredClone(graphFixture), id: `graph-${id}`, analysisId: id } as ImpactGraph,
       ...structuredClone(analysisFixture),
       source: "mock",
     };
@@ -81,7 +86,7 @@ export const mockService: VibelationService = {
       throw new Error(
         "현재 요구사항 확정과 해당 확정 기준의 영향도 분석이 필요합니다. Mock은 필수가 아닙니다.",
       );
-    await wait(s, localMockSettings.timing.reportDelayMs);
+    await wait(s);
     return {
       basis: basisOf(r),
       id: crypto.randomUUID(),
@@ -94,7 +99,7 @@ export const mockService: VibelationService = {
         requirements: agreementMarkdown(r),
         impacts: r
           .analysis!.impacts.map((i) =>
-            renderMockTemplate(reportFixture.impactTemplate, { ...i }),
+            renderMockTemplate(reportFixture.impactTemplate, { ...i, days: i.days ?? 0 }),
           )
           .join("\n"),
       }),
@@ -131,6 +136,8 @@ export async function analyzeRequirements(
         input.basis.legacyVersion,
         ticket.key,
         signal,
+        undefined,
+        input.basis.screenType,
       );
   if (typeof job.id === "string") {
     ticket.id = job.id;
@@ -145,41 +152,16 @@ export async function analyzeRequirements(
     }
     if (job.status === "succeeded") {
       const result =
-        (Array.isArray(job.result?.impacts) ? job.result : undefined) ||
-        (typeof (job.analysisId || job.result?.id) === "string"
+        job.result ||
+        (typeof job.analysisId === "string"
           ? await generationTransport.get(
-              `/analysis-results/${encodeURIComponent(job.analysisId || job.result.id)}`,
+              `/analysis-results/${encodeURIComponent(job.analysisId)}`,
               signal,
             )
           : undefined);
-      if (
-        !result ||
-        !Array.isArray(result.impacts) ||
-        ![result.totalDays, result.durationDays, result.bufferDays].every(
-          (v) => typeof v === "number" && Number.isFinite(v),
-        ) ||
-        typeof result.id !== "string" ||
-        !result.impacts.every(
-          (v: Record<string, unknown>) =>
-            typeof v?.id === "string" &&
-            ["UI", "Logic", "API", "DB", "Permission"].includes(
-              String(v.type),
-            ) &&
-            ["name", "path", "current", "proposed", "reason"].every(
-              (k) => typeof v[k] === "string",
-            ) &&
-            typeof v.days === "number",
-        )
-      )
-        throw new Error("서버 분석 결과 형식이 올바르지 않습니다.");
-      if (
-        result.confirmationId !== input.basis.confirmationId ||
-        result.legacyVersion !== input.basis.legacyVersion ||
-        result.requirementDocumentId !== input.basis.requirementDocumentId
-      )
-        throw new Error("서버 결과의 MD·코드 기준이 요청과 다릅니다.");
+      const restored = await analysisFromServer(result, input);
       localStorage.removeItem(ticketKey);
-      return { ...result, basis: input.basis, source: "server" };
+      return restored;
     }
     if (
       !["queued", "running"].includes(job.status) ||
@@ -197,3 +179,38 @@ export async function analyzeRequirements(
   );
 }
 export { sample };
+
+/** Apply the same current-contract checks to generated and restored analysis results. */
+export async function analysisFromServer(result: any, input: Pick<AnalysisInput, "basis" | "sources">): Promise<Analysis> {
+      if (
+        !result ||
+        (result.impacts !== undefined && !Array.isArray(result.impacts)) ||
+        typeof result.id !== "string" ||
+        !(result.impacts || []).every(
+          (v: Record<string, unknown>) =>
+            typeof v?.id === "string" &&
+            ["UI", "Logic", "API", "DB", "Permission"].includes(
+              String(v.type),
+            ) &&
+            ["name", "path", "current", "proposed", "reason"].every(
+              (k) => typeof v[k] === "string",
+            ),
+        )
+      )
+        throw new Error("서버 분석 결과 형식이 올바르지 않습니다.");
+      if (
+        result.screenType !== input.basis.screenType ||
+        result.confirmationId !== input.basis.confirmationId ||
+        result.legacyVersion !== input.basis.legacyVersion ||
+        result.requirementDocumentId !== input.basis.requirementDocumentId
+      )
+        throw new Error("서버 결과의 MD·코드 기준이 요청과 다릅니다.");
+      const html = result.html, artifact = result.analysisHtmlArtifact;
+      if (typeof html !== "string" || !html.trim() || !artifact || typeof artifact.id !== "string" || !/^[a-f0-9]{64}$/.test(artifact.sha256)) throw new Error("서버 분석 HTML 파일을 확인할 수 없습니다.");
+      const bytes = new TextEncoder().encode(html);
+      const hash = [...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))].map(n => n.toString(16).padStart(2, "0")).join("");
+      if (bytes.byteLength !== artifact.sizeBytes || hash !== artifact.sha256) throw new Error("분석 HTML 파일 크기 또는 해시가 일치하지 않습니다.");
+      const graphError = validateImpactGraph(result.impactGraph, result.id, input.sources);
+      if (graphError) throw new Error(`영향도 지도 응답을 확인해주세요 (${graphError}). 다시 분석해주세요.`);
+      return { ...result, impacts: result.impacts || [], impactGraph: graphError ? undefined : result.impactGraph, impactGraphError: graphError || undefined, basis: input.basis, source: "server" };
+}

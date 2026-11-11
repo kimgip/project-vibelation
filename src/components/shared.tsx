@@ -1,5 +1,3 @@
-import { productPreviewFixture as fixture } from "../mocks/fixtures";
-import { renderMockTemplate } from "../mocks/template";
 import { useState } from "react";
 import { StaticHtmlFrame } from "./StaticHtmlFrame";
 import { Download, Search, FileText, Check, Monitor } from "lucide-react";
@@ -117,32 +115,32 @@ export function ProductPreview({
   resultScenario?: "success" | "partial" | "failure";
 }) {
   const [selected, setSelected] = useState<string[]>([]),
-    [language, setLanguage] = useState(fixture.languages[0]),
+    [language, setLanguage] = useState("KOR"),
     [query, setQuery] = useState(""),
-    [category, setCategory] = useState(fixture.categories[0]),
+    [category, setCategory] = useState("제품 카탈로그"),
     [message, setMessage] = useState("");
   const toggle = (name: string) => {
     setMessage("");
     if (selected.includes(name))
       setSelected(selected.filter((x) => x !== name));
-    else if (selected.length >= fixture.maxSelection)
-      setMessage(renderMockTemplate(fixture.messages.limit,{max:fixture.maxSelection}));
+    else if (selected.length >= 10)
+      setMessage("최대 10개까지 선택할 수 있습니다.");
     else setSelected([...selected, name]);
   };
   return (
     <div className="product-preview">
       <div className="product-top">
         <b>
-          {fixture.brand} <span>{fixture.productLabel}</span>
+          POSCO <span>제품 자료</span>
         </b>
-        <small>{fixture.breadcrumb}</small>
+        <small>고객지원 / 다운로드 센터</small>
       </div>
       <div className="product-body">
-        <small>{fixture.eyebrow}</small>
-        <h2>{fixture.title}</h2>
-        <p>{fixture.description}</p>
+        <small>CUSTOMER SUPPORT</small>
+        <h2>다운로드 센터</h2>
+        <p>필요한 제품 자료를 쉽고 빠르게 찾아보세요.</p>
         <div className="mini-tabs" role="tablist" aria-label="자료 종류">
-          {fixture.categories.map((c) => (
+          {["제품 카탈로그", "업무지원자료"].map((c) => (
             <button
               role="tab"
               aria-selected={category === c}
@@ -165,28 +163,29 @@ export function ProductPreview({
         </div>
         {applied && (
           <div className="selection-bar">
-            <b>{fixture.labels.selection} {selected.length} / {fixture.maxSelection}</b>
+            <b>선택 자료 {selected.length} / 10</b>
             <select
               aria-label="다운로드 언어"
               value={language}
               onChange={(e) => setLanguage(e.target.value)}
             >
-              {fixture.languages.map(value=><option key={value}>{value}</option>)}
+              <option>KOR</option>
+              <option>ENG</option>
             </select>
             <button
               disabled={!selected.length}
               onClick={() =>
                 setMessage(
                   resultScenario === "failure"
-                    ? fixture.messages.failure
+                    ? "다운로드 실패 시연: 잠시 후 다시 시도해주세요. 실제 API 호출은 없습니다."
                     : resultScenario === "partial"
-                      ? fixture.messages.partial
-                      : renderMockTemplate(fixture.messages.success,{count:selected.length,language}),
+                      ? "일부 파일 누락 시연: 선택한 자료 중 파일이 없는 항목을 안내합니다."
+                      : `${selected.length}개 · ${language} ZIP 다운로드 성공 시연입니다. 실제 API는 연결하지 않았습니다.`,
                 )
               }
             >
               <Download size={12} />
-              {fixture.labels.download}
+              선택 다운로드
             </button>
           </div>
         )}
@@ -195,7 +194,7 @@ export function ProductPreview({
             .filter(
               (name, index) =>
                 name.includes(query) &&
-                (category === fixture.categories[0] ? index < fixture.catalogCount : index >= fixture.catalogCount),
+                (category === "제품 카탈로그" ? index < 6 : index >= 6),
             )
             .map((name, index) => (
               <article className="material" key={name}>
@@ -209,22 +208,26 @@ export function ProductPreview({
                 )}
                 <div className={`cover cover${index % 3}`}>
                   <span>
-                    {fixture.cover.map((line,index)=><span key={index}>{line}{index<fixture.cover.length-1 && <br/>}</span>)}
+                    POSCO
+                    <br />
+                    PRODUCT
+                    <br />
+                    CATALOG
                   </span>
                   <div />
-                  <small>{fixture.coverTagline}</small>
+                  <small>STEEL SOLUTIONS FOR TOMORROW</small>
                 </div>
                 <b>{name}</b>
-                <small>{fixture.materialDescription}</small>
+                <small>제품 소개 및 기술 자료</small>
                 <button
                   className="file-pill"
                   onClick={() =>
                     setMessage(
-                      fixture.messages.fileInfo,
+                      "파일 정보 확인 시연입니다. 실제 파일은 연결하지 않았습니다.",
                     )
                   }
                 >
-                  {fixture.fileLabel}
+                  PDF · KOR / ENG
                 </button>
               </article>
             ))}
@@ -238,9 +241,9 @@ export function ProductPreview({
       <div className="preview-bottom">
         <span>
           <Monitor size={13} />{" "}
-          {applied ? fixture.labels.proposed : fixture.labels.original}
+          {applied ? "시스템 적용 제안" : "현업의 원하는 모습"}
         </span>
-        <span className="tag blue">{fixture.labels.trusted}</span>
+        <span className="tag blue">신뢰된 샘플 UI</span>
       </div>
     </div>
   );

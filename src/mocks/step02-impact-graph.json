@@ -1,0 +1,620 @@
+{
+  "schemaVersion": "impact-graph-v3",
+  "id": "mock-impact-graph",
+  "revision": 2,
+  "analysisId": "mock",
+  "generatedAt": "2026-10-21T00:00:00Z",
+  "groups": [
+    {
+      "id": "entry",
+      "label": "진입점",
+      "description": "사용자가 닿는 곳",
+      "order": 0
+    },
+    {
+      "id": "core",
+      "label": "핵심 자원",
+      "description": "기능의 본체",
+      "order": 1
+    },
+    {
+      "id": "related",
+      "label": "연관 자원",
+      "description": "호출 체인",
+      "order": 2
+    }
+  ],
+  "nodes": [
+    {
+      "id": "megaMenu",
+      "groupId": "entry",
+      "order": 0,
+      "title": "GNB",
+      "subtitle": "고객지원 › 제품 카탈로그 메뉴",
+      "resourceType": "UI",
+      "kind": "file",
+      "impactId": null,
+      "action": "check",
+      "actionReason": "?materialType=CATALOG 진입 경로 그대로 사용\n변경 없음",
+      "changes": [
+        "?materialType=CATALOG 진입 경로 그대로 사용",
+        "변경 없음"
+      ],
+      "displayPath": "myposco-demo-front/js/common/layout.js · renderSiteHeader(), CUSTOMER_SUPPORT_MENU",
+      "external": false,
+      "relatedTo": [],
+      "access": [],
+      "evidenceIds": []
+    },
+    {
+      "id": "pageInit",
+      "groupId": "entry",
+      "order": 1,
+      "title": "initDownloadCenterPage",
+      "subtitle": "화면 진입·이벤트 바인딩",
+      "resourceType": "Logic",
+      "kind": "file",
+      "impactId": null,
+      "action": "check",
+      "actionReason": "초기화 흐름은 유지\nbindEvents() 에 미리보기 이벤트만 추가됨",
+      "changes": [
+        "초기화 흐름은 유지",
+        "bindEvents() 에 미리보기 이벤트만 추가됨"
+      ],
+      "displayPath": "myposco-demo-front/js/download-center/downloadCenterPage.js · initDownloadCenterPage(), bindEvents()",
+      "external": false,
+      "relatedTo": [],
+      "access": [],
+      "evidenceIds": []
+    },
+    {
+      "id": "detailModal",
+      "groupId": "entry",
+      "order": 2,
+      "title": "materialDetailModal",
+      "subtitle": "표지 클릭 → 상세 모달 (기존 동작)",
+      "resourceType": "UI",
+      "kind": "file",
+      "impactId": null,
+      "action": "modify",
+      "actionReason": "표지 클릭이 상세 → 미리보기로 바뀜 (FR-03)\n상세 모달은 제목 클릭으로 진입\n동선 변경은 현업 확인 필요",
+      "changes": [
+        "표지 클릭이 상세 → 미리보기로 바뀜 (FR-03)",
+        "상세 모달은 제목 클릭으로 진입",
+        "동선 변경은 현업 확인 필요"
+      ],
+      "displayPath": "download-center.html #materialDetailModal · downloadCenterPage.js handleMaterialCardClick()",
+      "external": false,
+      "relatedTo": [],
+      "access": [],
+      "evidenceIds": []
+    },
+    {
+      "id": "html",
+      "groupId": "core",
+      "order": 3,
+      "title": "download-center.html",
+      "subtitle": "미리보기 모달 + iframe 뷰어",
+      "resourceType": "UI",
+      "kind": "file",
+      "impactId": null,
+      "action": "modify",
+      "actionReason": "#materialPreviewModal 추가\n본문에 <iframe id=\"materialPreviewFrame\"> — 브라우저 내장 PDF 뷰어 사용\n헤더에 KOR/ENG 전환, 하단에 다운로드 버튼\n상단 주석의 이벤트 연결 목록 갱신",
+      "changes": [
+        "#materialPreviewModal 추가",
+        "본문에 <iframe id=\"materialPreviewFrame\"> — 브라우저 내장 PDF 뷰어 사용",
+        "헤더에 KOR/ENG 전환, 하단에 다운로드 버튼",
+        "상단 주석의 이벤트 연결 목록 갱신"
+      ],
+      "displayPath": "myposco-demo-front/pages/download-center/download-center.html",
+      "external": false,
+      "relatedTo": [],
+      "access": [],
+      "evidenceIds": []
+    },
+    {
+      "id": "pageJs",
+      "groupId": "core",
+      "order": 4,
+      "title": "downloadCenterPage.js",
+      "subtitle": "카드 렌더링 + 미리보기 열기·닫기",
+      "resourceType": "Logic",
+      "kind": "file",
+      "impactId": null,
+      "action": "modify",
+      "actionReason": "renderMaterialCover() 눈 배지·호버\nrenderMaterialCard() [미리보기] 버튼\nhandleMaterialCardClick() 미리보기/상세 분기\nopenMaterialPreviewModal() — iframe src 지정, 제공 언어만 활성화\n페이지 이동·썸네일·확대는 내장 뷰어가 처리",
+      "changes": [
+        "renderMaterialCover() 눈 배지·호버",
+        "renderMaterialCard() [미리보기] 버튼",
+        "handleMaterialCardClick() 미리보기/상세 분기",
+        "openMaterialPreviewModal() — iframe src 지정, 제공 언어만 활성화",
+        "페이지 이동·썸네일·확대는 내장 뷰어가 처리"
+      ],
+      "displayPath": "myposco-demo-front/js/download-center/downloadCenterPage.js",
+      "external": false,
+      "relatedTo": [],
+      "access": [],
+      "evidenceIds": []
+    },
+    {
+      "id": "apiJs",
+      "groupId": "core",
+      "order": 5,
+      "title": "downloadCenterApi.js",
+      "subtitle": "미리보기 URL 함수 추가",
+      "resourceType": "API",
+      "kind": "file",
+      "impactId": null,
+      "action": "modify",
+      "actionReason": "buildFilePreviewUrl(fileId) 추가 → GET /api/download-center/files/{fileId}/preview",
+      "changes": [
+        "buildFilePreviewUrl(fileId) 추가 → GET /api/download-center/files/{fileId}/preview"
+      ],
+      "displayPath": "myposco-demo-front/js/download-center/downloadCenterApi.js",
+      "external": false,
+      "relatedTo": [],
+      "access": [],
+      "evidenceIds": []
+    },
+    {
+      "id": "css",
+      "groupId": "core",
+      "order": 6,
+      "title": "downloadCenter.css",
+      "subtitle": "배지·호버·미리보기 모달 스타일",
+      "resourceType": "UI",
+      "kind": "file",
+      "impactId": null,
+      "action": "modify",
+      "actionReason": "표지 배지·호버, 미리보기 버튼\n.material-preview-modal, iframe 영역 크기",
+      "changes": [
+        "표지 배지·호버, 미리보기 버튼",
+        ".material-preview-modal, iframe 영역 크기"
+      ],
+      "displayPath": "myposco-demo-front/css/downloadCenter.css",
+      "external": false,
+      "relatedTo": [],
+      "access": [],
+      "evidenceIds": []
+    },
+    {
+      "id": "flow",
+      "groupId": "core",
+      "order": 7,
+      "title": "DownloadCenterFlow",
+      "subtitle": "GET /files/{fileId}/preview",
+      "resourceType": "API",
+      "kind": "file",
+      "impactId": null,
+      "action": "modify",
+      "actionReason": "@GetMapping(\"/files/{fileId}/preview\") 추가\nContent-Type: application/pdf, Content-Disposition: inline 으로 반환 (다운로드는 attachment)",
+      "changes": [
+        "@GetMapping(\"/files/{fileId}/preview\") 추가",
+        "Content-Type: application/pdf, Content-Disposition: inline 으로 반환 (다운로드는 attachment)"
+      ],
+      "displayPath": "myposco-demo-back/src/main/java/com/myposco/demo/flow/DownloadCenterFlow.java",
+      "external": false,
+      "relatedTo": [],
+      "access": [],
+      "evidenceIds": []
+    },
+    {
+      "id": "feature",
+      "groupId": "core",
+      "order": 8,
+      "title": "DownloadCenterFeature",
+      "subtitle": "공개여부·파일 확인",
+      "resourceType": "Logic",
+      "kind": "file",
+      "impactId": null,
+      "action": "new",
+      "actionReason": "비공개 자료(publish_yn='N') 미리보기 차단\n저장 파일 경로 확인\n다운로드 API와 파일 조회 로직 공유",
+      "changes": [
+        "비공개 자료(publish_yn='N') 미리보기 차단",
+        "저장 파일 경로 확인",
+        "다운로드 API와 파일 조회 로직 공유"
+      ],
+      "displayPath": "myposco-demo-back/src/main/java/com/myposco/demo/feature/DownloadCenterFeature.java (신규)",
+      "external": false,
+      "relatedTo": [],
+      "access": [],
+      "evidenceIds": []
+    },
+    {
+      "id": "download",
+      "groupId": "related",
+      "order": 9,
+      "title": "downloadFile()",
+      "subtitle": "GET /files/{fileId}/download (5단계 예정)",
+      "resourceType": "API",
+      "kind": "file",
+      "impactId": null,
+      "action": "modify",
+      "actionReason": "아직 미구현이라 KOR/ENG 링크는 404\n팝업 내 다운로드(FR-08)가 이 API를 사용\n파일 조회 로직을 미리보기와 함께 구현",
+      "changes": [
+        "아직 미구현이라 KOR/ENG 링크는 404",
+        "팝업 내 다운로드(FR-08)가 이 API를 사용",
+        "파일 조회 로직을 미리보기와 함께 구현"
+      ],
+      "displayPath": "DownloadCenterFlow.downloadFile() — remaining-work.md 상 5단계",
+      "external": false,
+      "relatedTo": [],
+      "access": [],
+      "evidenceIds": []
+    },
+    {
+      "id": "store",
+      "groupId": "related",
+      "order": 10,
+      "title": "DownloadCenterStore",
+      "subtitle": "findFile(fileId) 추가",
+      "resourceType": "Logic",
+      "kind": "file",
+      "impactId": null,
+      "action": "modify",
+      "actionReason": "findFile(Long fileId) 추가",
+      "changes": [
+        "findFile(Long fileId) 추가"
+      ],
+      "displayPath": "myposco-demo-back/src/main/java/com/myposco/demo/store/DownloadCenterStore.java",
+      "external": false,
+      "relatedTo": [],
+      "access": [],
+      "evidenceIds": []
+    },
+    {
+      "id": "mapper",
+      "groupId": "related",
+      "order": 11,
+      "title": "DownloadCenterMapper",
+      "subtitle": "selectFileById 메서드",
+      "resourceType": "DB",
+      "kind": "file",
+      "impactId": null,
+      "action": "modify",
+      "actionReason": "selectFileById(Long fileId) 추가 — XML SQL ID와 일치",
+      "changes": [
+        "selectFileById(Long fileId) 추가 — XML SQL ID와 일치"
+      ],
+      "displayPath": "myposco-demo-back/src/main/java/com/myposco/demo/store/DownloadCenterMapper.java",
+      "external": false,
+      "relatedTo": [],
+      "access": [],
+      "evidenceIds": []
+    },
+    {
+      "id": "mapperXml",
+      "groupId": "related",
+      "order": 12,
+      "title": "downloadCenterMapper.xml",
+      "subtitle": "selectFileById SQL",
+      "resourceType": "DB",
+      "kind": "file",
+      "impactId": null,
+      "action": "modify",
+      "actionReason": "<select id=\"selectFileById\"> 추가 (자료 공개여부 조인)",
+      "changes": [
+        "<select id=\"selectFileById\"> 추가 (자료 공개여부 조인)"
+      ],
+      "displayPath": "myposco-demo-back/src/main/resources/mapper/downloadCenterMapper.xml",
+      "external": false,
+      "relatedTo": [],
+      "access": [],
+      "evidenceIds": []
+    },
+    {
+      "id": "fileRow",
+      "groupId": "related",
+      "order": 13,
+      "title": "DownloadMaterialFileRow",
+      "subtitle": "storedFileName 필드",
+      "resourceType": "DB",
+      "kind": "file",
+      "impactId": null,
+      "action": "modify",
+      "actionReason": "파일 조회용 storedFileName 필드 추가",
+      "changes": [
+        "파일 조회용 storedFileName 필드 추가"
+      ],
+      "displayPath": "myposco-demo-back/src/main/java/com/myposco/demo/store/dto/DownloadMaterialFileRow.java",
+      "external": false,
+      "relatedTo": [],
+      "access": [],
+      "evidenceIds": []
+    },
+    {
+      "id": "errorCode",
+      "groupId": "related",
+      "order": 14,
+      "title": "ErrorCode",
+      "subtitle": "FILE_NOT_FOUND",
+      "resourceType": "Logic",
+      "kind": "file",
+      "impactId": null,
+      "action": "modify",
+      "actionReason": "FILE_NOT_FOUND 추가",
+      "changes": [
+        "FILE_NOT_FOUND 추가"
+      ],
+      "displayPath": "myposco-demo-back/src/main/java/com/myposco/demo/feature/common/ErrorCode.java",
+      "external": false,
+      "relatedTo": [],
+      "access": [],
+      "evidenceIds": []
+    },
+    {
+      "id": "commonCss",
+      "groupId": "related",
+      "order": 15,
+      "title": "common.css .modal",
+      "subtitle": "공통 모달 재사용",
+      "resourceType": "UI",
+      "kind": "file",
+      "impactId": null,
+      "action": "check",
+      "actionReason": "수정하지 않고 확장 클래스로 처리\nFAQ·상세 모달에 영향 없는지 확인",
+      "changes": [
+        "수정하지 않고 확장 클래스로 처리",
+        "FAQ·상세 모달에 영향 없는지 확인"
+      ],
+      "displayPath": "myposco-demo-front/css/common.css",
+      "external": false,
+      "relatedTo": [
+        "css"
+      ],
+      "access": [],
+      "evidenceIds": []
+    },
+    {
+      "id": "cfgGuest",
+      "groupId": "related",
+      "order": 16,
+      "title": "접근 권한 범위",
+      "subtitle": "대외 · 비회원 포함",
+      "resourceType": "Permission",
+      "kind": "other",
+      "impactId": null,
+      "action": "check",
+      "actionReason": "기존 다운로드 센터와 같은 대외 권한 — 권한 변경 없음\n비회원도 미리보기 가능한지만 확인",
+      "changes": [
+        "기존 다운로드 센터와 같은 대외 권한 — 권한 변경 없음",
+        "비회원도 미리보기 가능한지만 확인"
+      ],
+      "displayPath": "소스 외 — 운영 권한 설정",
+      "external": true,
+      "relatedTo": [
+        "flow"
+      ],
+      "access": [
+        {
+          "label": "권한 구분",
+          "value": "대외",
+          "note": "My POSCO 다운로드 센터는 고객사용 화면"
+        },
+        {
+          "label": "대외 대상",
+          "value": "고객사 사용자 · 비회원",
+          "note": "신규 고객 유입 목적 — 비회원도 미리보기 가능"
+        },
+        {
+          "label": "대내 권한",
+          "value": "해당 없음",
+          "note": "관리자·판매담당자 화면은 변경 없음"
+        }
+      ],
+      "evidenceIds": []
+    },
+    {
+      "id": "cfgApiAuth",
+      "groupId": "related",
+      "order": 17,
+      "title": "미리보기 API 접근 권한",
+      "subtitle": "/files/{fileId}/preview 대외 공개 확인",
+      "resourceType": "Permission",
+      "kind": "other",
+      "impactId": null,
+      "action": "check",
+      "actionReason": "신규 API가 기존 다운로드 센터 API와 같은 대외 권한(비회원 포함)으로 열려 있는지 확인",
+      "changes": [
+        "신규 API가 기존 다운로드 센터 API와 같은 대외 권한(비회원 포함)으로 열려 있는지 확인"
+      ],
+      "displayPath": "소스 외 — API 권한·메뉴 권한 설정",
+      "external": true,
+      "relatedTo": [
+        "flow"
+      ],
+      "access": [],
+      "evidenceIds": []
+    },
+    {
+      "id": "cfgFrame",
+      "groupId": "related",
+      "order": 18,
+      "title": "iframe 표시 허용",
+      "subtitle": "PDF를 팝업 안에 띄울 수 있는지",
+      "resourceType": "Other",
+      "kind": "other",
+      "impactId": null,
+      "action": "check",
+      "actionReason": "화면(5500)과 API(8080) 출처가 달라 iframe 표시가 막히지 않는지 확인\n막혀 있으면 미리보기 경로만 허용하도록 설정 변경",
+      "changes": [
+        "화면(5500)과 API(8080) 출처가 달라 iframe 표시가 막히지 않는지 확인",
+        "막혀 있으면 미리보기 경로만 허용하도록 설정 변경"
+      ],
+      "displayPath": "소스 외 — 서버·보안 설정 (X-Frame-Options, Content-Security-Policy)",
+      "external": true,
+      "relatedTo": [
+        "html"
+      ],
+      "access": [],
+      "evidenceIds": []
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-0",
+      "sourceId": "megaMenu",
+      "targetId": "html",
+      "relation": "calls",
+      "direction": "directed",
+      "assessment": "inferred",
+      "evidenceIds": [],
+      "note": "첨부 디자인 예시의 관계입니다. 실제 소스 검증이 필요합니다."
+    },
+    {
+      "id": "edge-1",
+      "sourceId": "pageInit",
+      "targetId": "pageJs",
+      "relation": "calls",
+      "direction": "directed",
+      "assessment": "inferred",
+      "evidenceIds": [],
+      "note": "첨부 디자인 예시의 관계입니다. 실제 소스 검증이 필요합니다."
+    },
+    {
+      "id": "edge-2",
+      "sourceId": "detailModal",
+      "targetId": "pageJs",
+      "relation": "calls",
+      "direction": "directed",
+      "assessment": "inferred",
+      "evidenceIds": [],
+      "note": "첨부 디자인 예시의 관계입니다. 실제 소스 검증이 필요합니다."
+    },
+    {
+      "id": "edge-3",
+      "sourceId": "html",
+      "targetId": "pageJs",
+      "relation": "calls",
+      "direction": "directed",
+      "assessment": "inferred",
+      "evidenceIds": [],
+      "note": "첨부 디자인 예시의 관계입니다. 실제 소스 검증이 필요합니다."
+    },
+    {
+      "id": "edge-4",
+      "sourceId": "html",
+      "targetId": "css",
+      "relation": "loads_style",
+      "direction": "directed",
+      "assessment": "inferred",
+      "evidenceIds": [],
+      "note": "첨부 디자인 예시의 관계입니다. 실제 소스 검증이 필요합니다."
+    },
+    {
+      "id": "edge-5",
+      "sourceId": "pageJs",
+      "targetId": "apiJs",
+      "relation": "calls",
+      "direction": "directed",
+      "assessment": "inferred",
+      "evidenceIds": [],
+      "note": "첨부 디자인 예시의 관계입니다. 실제 소스 검증이 필요합니다."
+    },
+    {
+      "id": "edge-6",
+      "sourceId": "apiJs",
+      "targetId": "flow",
+      "relation": "calls",
+      "direction": "directed",
+      "assessment": "inferred",
+      "evidenceIds": [],
+      "note": "첨부 디자인 예시의 관계입니다. 실제 소스 검증이 필요합니다."
+    },
+    {
+      "id": "edge-7",
+      "sourceId": "apiJs",
+      "targetId": "download",
+      "relation": "calls",
+      "direction": "directed",
+      "assessment": "inferred",
+      "evidenceIds": [],
+      "note": "첨부 디자인 예시의 관계입니다. 실제 소스 검증이 필요합니다."
+    },
+    {
+      "id": "edge-8",
+      "sourceId": "flow",
+      "targetId": "feature",
+      "relation": "calls",
+      "direction": "directed",
+      "assessment": "inferred",
+      "evidenceIds": [],
+      "note": "첨부 디자인 예시의 관계입니다. 실제 소스 검증이 필요합니다."
+    },
+    {
+      "id": "edge-9",
+      "sourceId": "download",
+      "targetId": "feature",
+      "relation": "calls",
+      "direction": "directed",
+      "assessment": "inferred",
+      "evidenceIds": [],
+      "note": "첨부 디자인 예시의 관계입니다. 실제 소스 검증이 필요합니다."
+    },
+    {
+      "id": "edge-10",
+      "sourceId": "feature",
+      "targetId": "store",
+      "relation": "calls",
+      "direction": "directed",
+      "assessment": "inferred",
+      "evidenceIds": [],
+      "note": "첨부 디자인 예시의 관계입니다. 실제 소스 검증이 필요합니다."
+    },
+    {
+      "id": "edge-11",
+      "sourceId": "feature",
+      "targetId": "errorCode",
+      "relation": "calls",
+      "direction": "directed",
+      "assessment": "inferred",
+      "evidenceIds": [],
+      "note": "첨부 디자인 예시의 관계입니다. 실제 소스 검증이 필요합니다."
+    },
+    {
+      "id": "edge-12",
+      "sourceId": "store",
+      "targetId": "mapper",
+      "relation": "calls",
+      "direction": "directed",
+      "assessment": "inferred",
+      "evidenceIds": [],
+      "note": "첨부 디자인 예시의 관계입니다. 실제 소스 검증이 필요합니다."
+    },
+    {
+      "id": "edge-13",
+      "sourceId": "mapper",
+      "targetId": "mapperXml",
+      "relation": "other",
+      "direction": "directed",
+      "assessment": "inferred",
+      "evidenceIds": [],
+      "note": "첨부 디자인 예시의 관계입니다. 실제 소스 검증이 필요합니다."
+    },
+    {
+      "id": "edge-14",
+      "sourceId": "mapperXml",
+      "targetId": "fileRow",
+      "relation": "uses_type",
+      "direction": "directed",
+      "assessment": "inferred",
+      "evidenceIds": [],
+      "note": "첨부 디자인 예시의 관계입니다. 실제 소스 검증이 필요합니다."
+    }
+  ],
+  "evidence": [],
+  "coverage": {
+    "status": "unknown",
+    "methods": [
+      "manual"
+    ],
+    "runtimeVerified": false,
+    "limits": [],
+    "warnings": [
+      {
+        "code": "MOCK_REFERENCE",
+        "message": "첨부 맵.html 기반 시연 데이터입니다. 실제 소스·권한·호출 검증 결과가 아닙니다."
+      }
+    ]
+  }
+}
