@@ -42,6 +42,7 @@ const laneOrder = ["UI", "Logic", "API", "DB", "Permission", "Other"] as const;
 function useLegacyNames() {
   const [names, setNames] = useState<Record<string, string>>({
     [DEMO_LEGACY.id]: DEMO_LEGACY.name,
+    "MOCK-MYPOSCODX": "my posco dx",
   });
   useEffect(() => {
     let cancelled = false;
