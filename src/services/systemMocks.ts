@@ -53,6 +53,7 @@ export const systemMockService = {
         new AbortController().signal,
         doc.id,
         screenType,
+        doc.contentHash || [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(doc.markdown)))].map(n => n.toString(16).padStart(2, "0")).join(""),
       );
       if (
         typeof response.id !== "string" ||

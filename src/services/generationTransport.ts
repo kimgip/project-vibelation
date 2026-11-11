@@ -30,6 +30,7 @@ export function createGenerationTransport(
       signal: AbortSignal,
       documentId?: string,
       screenType?: "new" | "modify",
+      expectedDocumentContentHash?: string,
     ) {
       if (!archives.length)
         throw new Error(
@@ -39,6 +40,7 @@ export function createGenerationTransport(
       body.append("legacyReferenceId", version);
       if (screenType) body.append("screenType", screenType);
       if (documentId) body.append("requirementDocumentId", documentId);
+      if (expectedDocumentContentHash) body.append("expectedDocumentContentHash", expectedDocumentContentHash);
       return json(path, signal, {
         method: "POST",
         headers: { "Idempotency-Key": key },

@@ -12,7 +12,7 @@ React + Vite + TypeScript 기반 한국어 프런트엔드 시연 앱입니다.
 
 등록 요청은 `requestId`, `confirmationId`, `analysisResultId`, `similarCaseAnalysisId`를 보내고 응답의 `reportId`로 등록 묶음을 조회합니다. 별도 `/review-reports` 생성 작업은 호출하지 않습니다. 서버 시스템·ZIP 관리 화면은 설정에 추가되며, 분석/화면 생성의 실제 ZIP 송신은 main의 브라우저 코드 보관 흐름을 유지합니다.
 
-`npm test`는 최신 계약·revision 순서·재시도·복원·등록 회귀 검증을 포함합니다. `node tests/browser-server-workspace.mjs`는 Playwright/Chrome과 API 응답 대역으로 화면 저장·복원 및 서버 ZIP 관리를 검증합니다. 번들 Playwright를 쓰면 `PLAYWRIGHT_MODULE`을 지정합니다. 실제 BE 서버와의 종단 통신 검증은 별도로 필요합니다. 아래 기존 시연 설명보다 이 절의 서버 모드 동작이 우선합니다.
+`npm test`는 최신 계약·revision 순서·재시도·복원·등록 회귀 검증을 포함합니다. `node tests/browser-server-workspace.mjs`는 Playwright/Chrome과 API 응답 대역으로 화면 저장·복원 및 서버 ZIP 관리를 검증합니다. 번들 Playwright를 쓰면 `PLAYWRIGHT_MODULE`을 지정합니다. `node tests/browser-live-backend.mjs`는 BE의 가상환경으로 실제 Mock 서버를 임시 실행하고 생성·편집·분석·등록·원본 다운로드를 HTTP로 검증합니다. 실제 DB/Agent 연결 검증은 포함하지 않습니다. 아래 기존 시연 설명보다 이 절의 서버 모드 동작이 우선합니다.
 
 ## 실행·검증
 

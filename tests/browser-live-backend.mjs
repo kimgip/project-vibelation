@@ -1,0 +1,66 @@
+import assert from "node:assert/strict";
+import {createRequire} from "node:module";
+import {spawn} from "node:child_process";
+import {createServer as netServer} from "node:net";
+import {fileURLToPath} from "node:url";
+import {resolve} from "node:path";
+import {createServer} from "vite";
+const require=createRequire(import.meta.url),{chromium}=require(process.env.PLAYWRIGHT_MODULE||"playwright");
+const be=resolve(fileURLToPath(new URL("../../be",import.meta.url)));
+const socket=netServer();await new Promise(r=>socket.listen(0,"127.0.0.1",r));const port=socket.address().port;await new Promise(r=>socket.close(r));
+const python=process.env.BACKEND_PYTHON||resolve(be,".venv/Scripts/python.exe");
+const backend=spawn(python,["-m","uvicorn","app.main:app","--host","127.0.0.1","--port",String(port),"--log-level","warning"],{cwd:be,windowsHide:true,stdio:["ignore","pipe","pipe"]});
+let logs="";backend.stdout.on("data",v=>logs+=v);backend.stderr.on("data",v=>logs+=v);backend.on("error",e=>logs+=e.message);
+let vite,browser,page;const errors=[],failed=[],apiCalls=[];
+try{
+  let ready=false;for(let n=0;n<200;n++){try{if((await fetch(`http://127.0.0.1:${port}/health/live`)).ok){ready=true;break;}}catch{}await new Promise(r=>setTimeout(r,50));}
+  assert.ok(ready,logs);
+  vite=await createServer({server:{host:"127.0.0.1",port:0,proxy:{"/api":`http://127.0.0.1:${port}`}},logLevel:"error",define:{"import.meta.env.VITE_API_URL":JSON.stringify("/api"),"import.meta.env.VITE_REQUIREMENTS_API_URL":JSON.stringify(""),"import.meta.env.VITE_GENERATION_API_URL":JSON.stringify("")}});
+  await vite.listen();const base=`http://127.0.0.1:${vite.httpServer.address().port}/project-vibelation/`;
+  browser=await chromium.launch({channel:"chrome",headless:true});page=await browser.newPage({viewport:{width:1440,height:1100},acceptDownloads:true});
+  page.on("pageerror",e=>errors.push(e.message));page.on("request",req=>{if(new URL(req.url()).pathname.startsWith("/api/"))apiCalls.push({url:req.url(),method:req.method()});});
+  page.on("response",async res=>{if(res.url().includes("/api/")&&res.status()>=400)failed.push({url:res.url(),status:res.status(),body:await res.text().catch(()=>"")});});
+  await page.goto(base);
+  await page.waitForFunction(()=>!document.body.innerText.includes("서버 요청을 불러오는 중입니다"));
+  await page.evaluate(async()=>{
+    const {legacyRepository}=await import("/project-vibelation/src/storage/legacySources.ts");const {prepareSourceArchive}=await import("/project-vibelation/src/domain/legacySources.ts");
+    const archive=await prepareSourceArchive(new File([new Uint8Array([80,75,3,4,10,20,30])],"live-source.zip"),"frontend");
+    const system=await legacyRepository.save({id:"live-system",name:"실서버 검증 시스템",description:"",archives:[archive],revision:0},0);await legacyRepository.apply(system);
+  });
+  await page.getByRole("button",{name:/시작하기/}).click();
+  await page.getByRole("button",{name:/실서버 검증 시스템/}).click();await page.locator(".screen-type-options button").first().click();
+  await page.getByLabel("요청 제목",{exact:true}).fill("BE 실통신 검증");await page.getByRole("button",{name:"요청 정보 저장",exact:true}).click();
+  await page.getByRole("button",{name:"쇳물 녹이기 ›",exact:true}).click();
+  await page.getByRole("button",{name:"샘플 불러오기",exact:true}).click();
+  await page.getByText("+ 자료 추가",{exact:true}).click();await page.getByRole("button",{name:/PPT · 자료 첨부/}).click();
+  await page.getByLabel("자료 첨부",{exact:true}).setInputFiles({name:"live-brief.txt",mimeType:"text/plain",buffer:Buffer.from("실제 첨부 원본")});
+  await page.getByText("전송 처리 완료",{exact:false}).waitFor();
+  await page.getByRole("button",{name:"성분 보기 ›",exact:true}).click();
+  await page.getByRole("heading",{name:"[쇳물 성분 보기]",exact:true}).waitFor();
+  await page.getByText("BE 실통신 검증_version1.md",{exact:true}).waitFor();
+  await page.getByRole("button",{name:"기준으로 정하기",exact:true}).click();
+  await page.getByText("✓ 협의 기준",{exact:true}).first().waitFor();
+  await page.getByRole("button",{name:"Code",exact:true}).click();const editor=page.getByRole("textbox",{name:"요구사항 MD 코드",exact:true});
+  await editor.fill(await editor.inputValue()+"\n\n실서버 MD 편집 확인");await page.getByRole("button",{name:"저장",exact:true}).click();
+  await page.waitForFunction(()=>{const r=JSON.parse(localStorage.getItem("soetmul.server-drafts:")||"[]")[0];return r?.requirements[0]?.markdown.includes("실서버 MD 편집 확인");});
+  await page.getByRole("button",{name:"Preview",exact:true}).click();
+  await page.getByRole("button",{name:"미리 붓기 ›",exact:true}).click();
+  await page.locator('iframe[title="입력 HTML 정적 미리보기"]').waitFor();
+  await page.getByRole("button",{name:"탕도 살피기 ›",exact:true}).click();
+  await page.locator(".graph-node").first().waitFor();assert.equal(await page.locator(".graph-node").count(),19);
+  await page.getByRole("button",{name:"붓기 준비 완료 ›",exact:true}).click();
+  await page.getByRole("heading",{name:"[붓기 준비 완료]",exact:true}).waitFor();
+  await page.getByRole("button",{name:"이력에 등록",exact:true}).click();await page.waitForURL(/#\/history\/review-/);
+  const bundleId=page.url().split("/history/")[1];assert.ok(bundleId);
+  await page.getByRole("button",{name:"live-brief.txt 다운로드",exact:true}).waitFor();
+  const manifestResponse=await page.request.get(new URL(`/api/review-registrations/${bundleId}`,base).href);const bundle=await manifestResponse.json();
+  assert.equal(bundle.reportId,bundleId);assert.equal(bundle.similarCaseAnalysisSnapshot.similarCaseMap.cases.length,3);
+  assert.equal(bundle.confirmationSnapshot.documentSnapshot.markdown.includes("실서버 MD 편집 확인"),true);assert.equal(bundle.reportSnapshot,undefined);
+  const downloads=page.waitForEvent("download");await page.getByRole("button",{name:"live-brief.txt 다운로드",exact:true}).click();const download=await downloads;assert.equal(download.suggestedFilename(),"live-brief.txt");
+  const stream=await download.createReadStream(),buffers=[];for await(const part of stream)buffers.push(part);assert.equal(Buffer.concat(buffers).toString(),"실제 첨부 원본");
+  await page.reload();await page.getByRole("button",{name:"live-brief.txt 다운로드",exact:true}).waitFor();
+  await page.goto(base+"#/requests");await page.getByRole("heading",{name:"BE 실통신 검증",exact:true}).waitFor();
+  assert.equal(apiCalls.some(r=>/review-reports|report-jobs/.test(r.url)),false);assert.deepEqual(errors,[]);assert.deepEqual(failed,[]);
+  console.log("PASS live FE/BE: upload -> MD generation/edit -> Mock HTML -> impact graph -> SIM -> reportId registration -> immutable history/download -> reload");
+}catch(e){console.error(JSON.stringify({errors,failed,body:page?await page.locator("body").innerText().catch(()=>""):"",backend:logs.slice(-3000)},null,2));throw e;}
+finally{await browser?.close();await vite?.close();backend.kill();}

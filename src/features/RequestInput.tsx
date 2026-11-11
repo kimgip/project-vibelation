@@ -104,6 +104,7 @@ export function InputPage(props: WorkspaceProps) {
           previous.selectedRequirementDocumentId || null,
           r.inputRevision,
           new AbortController().signal,
+          r.requirements.find(d => d.id === previous.selectedRequirementDocumentId)?.contentHash,
         );
       update((latest) => {
         if (latest.revision !== capturedRevision) throw new Error("되돌리는 중 입력이 변경되었습니다. 기준을 다시 선택해주세요.");
@@ -127,6 +128,7 @@ export function InputPage(props: WorkspaceProps) {
         doc.id,
         r.inputRevision,
         controller.signal,
+        doc.contentHash,
       );
       if (!controller.signal.aborted)
         update((latest) => {

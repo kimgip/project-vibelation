@@ -164,7 +164,9 @@ export async function confirmServerRequest(r: WorkRequest, signal: AbortSignal, 
     const confirmed = confirmRequirement(r), c = confirmed.confirmations.find(x => x.id === confirmed.activeConfirmationId)!;
     const op = operationKey(`confirm:${r.id}:${c.draftFingerprint}`, api.base);
     const wire = await api.request(`/requests/${encodeURIComponent(r.id)}/requirement-confirmations`, signal,
-      jsonPost({ requirementDocumentId: c.documentSnapshot.id, expectedInputRevision: row.inputRevision, expectedRequestRevision: row.requestRevision }, op.key));
+      jsonPost({ requirementDocumentId: c.documentSnapshot.id,
+        expectedDocumentContentHash: c.documentSnapshot.contentHash || [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(c.documentSnapshot.markdown)))].map(n => n.toString(16).padStart(2, "0")).join(""),
+        expectedInputRevision: row.inputRevision, expectedRequestRevision: row.requestRevision }, op.key));
     if ((wire.requestId && wire.requestId !== r.id) || typeof wire.id !== "string" || !wire.documentSnapshot || wire.documentSnapshot.id !== c.documentSnapshot.id || wire.documentSnapshot.markdown !== c.documentSnapshot.markdown)
       throw new Error("서버 확정의 요구사항 기준이 다릅니다.");
     rememberServerRequest({ ...row, requestRevision: wire.requestRevision ?? row.requestRevision + 1, activeConfirmationId: wire.id }, serverState(r.id, api.base)?.fingerprint, api.base);

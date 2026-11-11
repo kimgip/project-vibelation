@@ -1,6 +1,6 @@
 import { createApiClient, operationKey } from "./api";
 import { createBackendApi } from "./backendApi";
-import { mutateRequest, syncInput } from "./serverWorkspace";
+import { mutateRequest, syncInput, withServerLock, rememberServerRequest, serverState } from "./serverWorkspace";
 import { waitForPoll } from "./generationTransport";
 import { saveMaterialFile } from "../storage/materialFiles";
 import { requirementFixtureForGeneration } from "../mocks/fixtures";
@@ -24,6 +24,7 @@ export interface RequirementsService {
     documentId: string | null,
     inputRevision: number,
     signal: AbortSignal,
+    expectedDocumentContentHash?: string,
   ): Promise<void>;
   upload(
     requestId: string,
@@ -228,6 +229,7 @@ export function createHttpRequirementsService(
   return {
     mode: "server",
     async saveDocument(document, markdown, signal) {
+      return withServerLock(document.inputSnapshot.requestId, async () => {
       const path = `${route(document.inputSnapshot.requestId)}/requirement-documents/${encodeURIComponent(document.id)}`;
       const response = await fetch(base + path, {signal, credentials:"same-origin"});
       if (!response.ok) throw new Error("문서 저장 기준을 조회하지 못했습니다.");
@@ -239,11 +241,15 @@ export function createHttpRequirementsService(
       if (!result.ok) throw new Error(result.status === 412 ? "다른 곳에서 문서가 수정됐습니다. 편집 내용을 보존한 뒤 새로고침해주세요." : "MD 저장에 실패했습니다. 편집 내용은 유지됩니다.");
       const saved = await result.json();
       if (saved.id !== document.id || saved.markdown !== markdown || saved.generationNumber !== document.generationNumber) throw new Error("저장된 문서 응답이 요청과 다릅니다.");
+      const row = await api.getRequest(document.inputSnapshot.requestId, signal);
+      rememberServerRequest(row, serverState(row.id, base)?.fingerprint, base);
       return {...document,...saved};
+      }, base);
     },
-    async select(id, documentId, inputRevision, signal) {
+    async select(id, documentId, inputRevision, signal, expectedDocumentContentHash) {
+      if (documentId && !expectedDocumentContentHash) expectedDocumentContentHash = (await api.requirementDocument(id, documentId, signal)).contentHash;
       await mutateRequest(id, signal, async current => {
-        const result = await api.patchRequest(id, { workingRequirementDocumentId: documentId,
+        const result = await api.patchRequest(id, { workingRequirementDocumentId: documentId, expectedDocumentContentHash,
           expectedInputRevision: current.inputRevision, expectedRequestRevision: current.requestRevision }, signal);
         localStorage.setItem(`soetmul.server-selection:${base}:${id}`, JSON.stringify({ id: documentId, inputRevision: result.inputRevision ?? current.inputRevision }));
         return result;

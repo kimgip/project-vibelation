@@ -110,6 +110,7 @@ test("HTTP generation saves a snapshot, starts by ID, and selects with current s
     inputRevision: 1,
     inputSnapshot: input,
     markdown: "# 요구사항",
+    contentHash: "fixture-md-hash",
     createdAt: job.createdAt,
     source: "server",
     formatVersion: "v1",
@@ -136,6 +137,7 @@ test("HTTP generation saves a snapshot, starts by ID, and selects with current s
     await api.select("req", "doc-1", 1, signal);
     assert.deepEqual(JSON.parse(calls.at(-1).init.body), {
       workingRequirementDocumentId: "doc-1",
+      expectedDocumentContentHash: "fixture-md-hash",
       expectedInputRevision: 3,
       expectedRequestRevision: 10,
     });
